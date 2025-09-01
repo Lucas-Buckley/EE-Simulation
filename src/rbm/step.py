@@ -26,6 +26,9 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     pred_p = params.get("predation", {})
     pred_atk = float(pred_p.get("predAtk", 0.0))
     pred_cap = float(pred_p.get("predCap", 0.0))
+    pred_eff = float(pred_p.get("predEff", 0.0))
+    preds_p = params.get("predators", {})
+    pred_mort = float(preds_p.get("mort", 0.0))
 
     # Step 3: Logistic carry growth (toward capMax)
     carry_growth = veg_rate * state.carry * (1.0 - state.carry / cap_max)
@@ -86,9 +89,24 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     # Step 10: Deer update and non-negativity (survivors + births - removals)
     deer_next_raw = surv_num + births - kill - hunt_rem
     deer_next = max(0.0, deer_next_raw)
-    diag.update({"deer_next": deer_next})
+    diag.update({
+        "deer_next": deer_next
+    })
 
-    next_state = State(deer=deer_next, pred=state.pred, carry=carry_next)
+    # Step 11: Predator update
+    pred_rec = pred_eff * kill
+    p_mort = pred_mort * state.pred
+    ctrl_rem = _clamp(float(inputs.ctrl), 0.0, 1.0) * state.pred
+    pred_next_raw = state.pred + pred_rec - p_mort - ctrl_rem
+    pred_next = max(0.0, pred_next_raw)
+    diag.update({
+        "predRec": pred_rec,
+        "pMort": p_mort,
+        "ctrlRem": ctrl_rem,
+        "pred_next": pred_next
+    })
+
+    next_state = State(deer=deer_next, pred=pred_next, carry=carry_next)
     return next_state, diag
 
 
