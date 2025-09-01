@@ -18,13 +18,19 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     veg = params.get("vegetation", {})
     veg_rate = float(veg.get("vegRate", 0.0))
     cap_max = float(veg.get("capMax", max(state.carry, 1.0)))
+    browse = float(veg.get("browse", 0.0))
 
     carry_growth = veg_rate * state.carry * (1.0 - state.carry / cap_max)
-    carry_next = state.carry + carry_growth
+    browse_loss = browse * max(0.0, state.deer - state.carry)
+    carry_next = state.carry + carry_growth - browse_loss
     carry_next = _clamp(carry_next, EPS, cap_max)
 
     next_state = State(deer=state.deer, pred=state.pred, carry=carry_next)
-    diag = {"carry_growth": carry_growth, "carry_next": carry_next}
+    diag = {
+        "carry_growth": carry_growth,
+        "browse_loss": browse_loss,
+        "carry_next": carry_next,
+    }
     return next_state, diag
 
 
