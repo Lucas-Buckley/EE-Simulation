@@ -1,0 +1,16 @@
+{
+  "time": { "start": 1905, "end": 1907 },
+  "inputs": {
+    "hunt": [0, 0, 0],
+    "ctrl": [0.3, 0.3, 0.1],
+    "winter": [0, 1, 0]
+  },
+  "params": {
+    "vegetation": { "vegRate": 0.15, "capMax": 100000, "browse": 0.10, "winPen": 0.05 },
+    "deer": { "birth": 1.0, "surv": 0.85, "wDeer": 0.2 },
+    "predation": { "predAtk": 0.0001, "predCap": 0.3, "predEff": 0.0015 },
+    "predators": { "mort": 0.12 }
+  },
+  "init": { "deer": 30000, "pred": 200, "carry": 30000 },
+  "seeds": { "main": 42 }
+}
