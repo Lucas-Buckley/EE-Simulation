@@ -22,6 +22,8 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     win_pen = float(veg.get("winPen", 0.0))
     deer_p = params.get("deer", {})
     birth_rate = float(deer_p.get("birth", 0.0))
+    surv_base = float(deer_p.get("surv", 0.0))
+    w_deer = float(deer_p.get("wDeer", 0.0))
 
     carry_growth = veg_rate * state.carry * (1.0 - state.carry / cap_max)
     browse_loss = browse * max(0.0, state.deer - state.carry)
@@ -33,6 +35,17 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     food = min(1.0, carry_next / max(state.deer, 1.0))
     births = state.deer * birth_rate * food
 
+    # Step 7: Natural survival fraction and survivors
+    surv_nat_raw = surv_base * (0.5 + 0.5 * food) * (1.0 - w_deer * float(inputs.winter))
+    # Clamp survival fraction to [0, 1]
+    if surv_nat_raw < 0.0:
+        surv_nat = 0.0
+    elif surv_nat_raw > 1.0:
+        surv_nat = 1.0
+    else:
+        surv_nat = surv_nat_raw
+    surv_num = state.deer * surv_nat
+
     next_state = State(deer=state.deer, pred=state.pred, carry=carry_next)
     diag = {
         "carry_growth": carry_growth,
@@ -40,6 +53,8 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
         "winter_loss": winter_loss,
         "food": food,
         "births": births,
+        "survNat": surv_nat,
+        "survNum": surv_num,
         "carry_next": carry_next,
     }
     return next_state, diag
