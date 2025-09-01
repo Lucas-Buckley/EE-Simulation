@@ -82,7 +82,13 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
         "huntRate": hunt_rate,
         "huntRem": hunt_rem
     })
-    next_state = State(deer=state.deer, pred=state.pred, carry=carry_next)
+    
+    # Step 10: Deer update and non-negativity (survivors + births - removals)
+    deer_next_raw = surv_num + births - kill - hunt_rem
+    deer_next = max(0.0, deer_next_raw)
+    diag.update({"deer_next": deer_next})
+
+    next_state = State(deer=deer_next, pred=state.pred, carry=carry_next)
     return next_state, diag
 
 

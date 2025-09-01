@@ -86,7 +86,7 @@ This plan breaks the project into very small increments. Each step lists the goa
   - Edge: cap `hunt` in [0,1] in validation
 
 ### Step 10: Deer update and non-negativity
-- Goal: Compute `deerNxt = max(0, deer + births + survNum - kill - huntRem)`.
+- Goal: Compute `deerNxt = max(0, survNum + births - kill - huntRem)`.
 - Deliverables:
   - Update `step` return values
 - Validate:
