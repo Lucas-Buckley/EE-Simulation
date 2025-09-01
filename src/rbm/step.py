@@ -14,7 +14,6 @@ def _clamp(value: float, low: float, high: float) -> float:
     return value
 
 def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
-    # Step 3: Carry update (logistic growth only; no browse, no winter yet)
     veg = params.get("vegetation", {})
     veg_rate = float(veg.get("vegRate", 0.0))
     cap_max = float(veg.get("capMax", max(state.carry, 1.0)))
@@ -28,38 +27,43 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     pred_atk = float(pred_p.get("predAtk", 0.0))
     pred_cap = float(pred_p.get("predCap", 0.0))
 
+    # Step 3: Logistic carry growth (toward capMax)
     carry_growth = veg_rate * state.carry * (1.0 - state.carry / cap_max)
+    diag = {
+        "carry_growth": carry_growth
+    }
+
+    # Step 4: Browse impact (deer above carry reduce next-year carry)
     browse_loss = browse * max(0.0, state.deer - state.carry)
+    diag.update({
+        "browse_loss": browse_loss
+    })
+
+    # Step 5: Winter penalty on carry (fraction of capMax per winter unit)
     winter_loss = win_pen * float(inputs.winter) * cap_max
     carry_next = state.carry + carry_growth - browse_loss - winter_loss
     carry_next = _clamp(carry_next, EPS, cap_max)
+    diag.update({
+        "winter_loss": winter_loss,
+        "carry_next": carry_next
+    })
 
-    # Step 6: Food ratio and births (do not update deer yet)
+    # Step 6: Food and births
     food = min(1.0, carry_next / max(state.deer, 1.0))
     births = state.deer * birth_rate * food
+    diag.update({
+        "food": food,
+        "births": births
+    })
 
     # Step 7: Natural survival fraction and survivors
     surv_nat_raw = surv_base * (0.5 + 0.5 * food) * (1.0 - w_deer * float(inputs.winter))
-    # Clamp survival fraction to [0, 1]
-    if surv_nat_raw < 0.0:
-        surv_nat = 0.0
-    elif surv_nat_raw > 1.0:
-        surv_nat = 1.0
-    else:
-        surv_nat = surv_nat_raw
+    surv_nat = _clamp(surv_nat_raw, 0.0, 1.0)
     surv_num = state.deer * surv_nat
-
-    next_state = State(deer=state.deer, pred=state.pred, carry=carry_next)
-    diag = {
-        "carry_growth": carry_growth,
-        "browse_loss": browse_loss,
-        "winter_loss": winter_loss,
-        "food": food,
-        "births": births,
+    diag.update({
         "survNat": surv_nat,
-        "survNum": surv_num,
-        "carry_next": carry_next,
-    }
+        "survNum": surv_num
+    })
 
     # Step 8: Predation kills (raw and capped)
     kill_raw = pred_atk * state.pred * state.deer
@@ -68,8 +72,17 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     diag.update({
         "killRaw": kill_raw,
         "killCap": kill_cap,
-        "kill": kill,
+        "kill": kill
     })
+
+    # Step 9: Hunting removals (clamp hunt rate to [0,1])
+    hunt_rate = _clamp(float(inputs.hunt), 0.0, 1.0)
+    hunt_rem = hunt_rate * state.deer
+    diag.update({
+        "huntRate": hunt_rate,
+        "huntRem": hunt_rem
+    })
+    next_state = State(deer=state.deer, pred=state.pred, carry=carry_next)
     return next_state, diag
 
 
