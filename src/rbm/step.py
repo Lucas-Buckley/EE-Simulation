@@ -24,6 +24,9 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     birth_rate = float(deer_p.get("birth", 0.0))
     surv_base = float(deer_p.get("surv", 0.0))
     w_deer = float(deer_p.get("wDeer", 0.0))
+    pred_p = params.get("predation", {})
+    pred_atk = float(pred_p.get("predAtk", 0.0))
+    pred_cap = float(pred_p.get("predCap", 0.0))
 
     carry_growth = veg_rate * state.carry * (1.0 - state.carry / cap_max)
     browse_loss = browse * max(0.0, state.deer - state.carry)
@@ -57,6 +60,16 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
         "survNum": surv_num,
         "carry_next": carry_next,
     }
+
+    # Step 8: Predation kills (raw and capped)
+    kill_raw = pred_atk * state.pred * state.deer
+    kill_cap = pred_cap * state.deer
+    kill = min(kill_raw, kill_cap)
+    diag.update({
+        "killRaw": kill_raw,
+        "killCap": kill_cap,
+        "kill": kill,
+    })
     return next_state, diag
 
 
