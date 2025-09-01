@@ -20,6 +20,8 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     cap_max = float(veg.get("capMax", max(state.carry, 1.0)))
     browse = float(veg.get("browse", 0.0))
     win_pen = float(veg.get("winPen", 0.0))
+    deer_p = params.get("deer", {})
+    birth_rate = float(deer_p.get("birth", 0.0))
 
     carry_growth = veg_rate * state.carry * (1.0 - state.carry / cap_max)
     browse_loss = browse * max(0.0, state.deer - state.carry)
@@ -27,11 +29,17 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     carry_next = state.carry + carry_growth - browse_loss - winter_loss
     carry_next = _clamp(carry_next, EPS, cap_max)
 
+    # Step 6: Food ratio and births (do not update deer yet)
+    food = min(1.0, carry_next / max(state.deer, 1.0))
+    births = state.deer * birth_rate * food
+
     next_state = State(deer=state.deer, pred=state.pred, carry=carry_next)
     diag = {
         "carry_growth": carry_growth,
         "browse_loss": browse_loss,
         "winter_loss": winter_loss,
+        "food": food,
+        "births": births,
         "carry_next": carry_next,
     }
     return next_state, diag
