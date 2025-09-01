@@ -2,6 +2,8 @@
 
 This plan breaks the project into very small increments. Each step lists the goal, concrete deliverables, and simple validation before moving on. Keep steps short; do not start the next step until validations pass.
 
+> Commit rule: After a step is implemented and validated, commit all changes and set the commit message (commit name/subject) to "Step X", where X is the step number. Example: `git commit -m "Step 3"`.
+
 > Validation rule: Any time you ask to implement a step, that step must also be validated immediately after implementation. Run the listed validations and report pass/fail before proceeding to the next step.
 
 ### Step 0: Repo scaffolding
