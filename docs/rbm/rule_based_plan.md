@@ -2,7 +2,7 @@
 
 ### 1) Purpose and scope
 - **Objective**: Build a rule-based predator–prey ecosystem simulator whose outputs best fit historical observations from the Kaibab Plateau (deer boom/crash following predator control and protection policies). This plan covers modeling assumptions, rules, parameters, data needs, calibration, validation, and tests.
-- **Outputs**: Time series for deer, predator populations, and forage/vegetation indices; event logs (e.g., predator control periods, severe winters); diagnostics and fit metrics.
+- **Outputs**: Time series for deer, predator populations, and forage/vegetation indices; event logs (e.g., predator control periods); diagnostics and fit metrics.
 - **Initial time resolution**: Annual time steps, with option to refine to seasonal later.
 
 ### 2) References and data
@@ -11,7 +11,6 @@
   - Deer abundance estimates by year (with uncertainty ranges if available)
   - Predator abundance indices (wolves, mountain lions, coyotes) or control effort proxies
   - Vegetation/forage availability proxy (qualitative or reconstructed indices)
-  - Climate/severity indicators (e.g., severe winter years) as binary or intensity inputs
   - Policy timeline (hunting moratorium start/stop, predator control intensity by year)
 - **Sources to compile**: Historical reports, NPS documents, state agency archives, academic reviews of the Kaibab case. Capture source citations and data provenance in `data/metadata.json`.
 
@@ -26,31 +25,29 @@
   - Deer population: deer (non-negative)
   - Predator population: pred (non-negative)
   - Carrying capacity proxy: carry (positive)
-  - Exogenous inputs: hunt (deer harvest rate), ctrl (predator control rate), winter (winter severity index)
+  - Exogenous inputs: hunt (deer harvest rate), ctrl (predator control rate)
 
 - **Time step**: Annual (can extend to seasonal later: winter/summer sub-steps).
 
 ### 4) Rules (annual update — Calc I friendly)
-Let the state at year t be (deer, pred, carry) and exogenous inputs (hunt, ctrl, winter).
+Let the state at year t be (deer, pred, carry) and exogenous inputs (hunt, ctrl).
 
 All formulas use only multiplication, division, addition/subtraction, powers with small integers, and min/max.
 
 1) Carrying capacity dynamics (simple logistic with browse and winter penalty)
-   - carryNxt = carry + vegRate * carry * (1 - carry / capMax) - browse * max(0, deer - carry) - winPen * winter * capMax
+   - carryNxt = carry + vegRate * carry * (1 - carry / capMax) - browse * max(0, deer - carry)
    - vegRate: vegetation recovery rate (0 to 1 per year)
    - capMax: maximum carrying capacity (units consistent with deer)
    - browse: how much overbrowsing (deer > carry) reduces next year carry
-   - winPen: fraction of capMax lost per unit winter severity (winter is 0 for normal, higher for severe)
 
-2) Deer births and natural survival (simple caps based on food and winter)
+2) Deer births and natural survival (simple caps based on food)
    - Food ratio: food = min(1, carry / max(deer, 1))  // per-deer forage, capped at 1
    - Births: births = deer * birth * food
-   - Natural survival fraction: survNat = surv * (0.5 + 0.5 * food) * (1 - wDeer * winter)
+   - Natural survival fraction: survNat = surv * (0.5 + 0.5 * food)
    - Natural survivors: survNum = deer * survNat
    - Parameters:
      - birth: max births per deer per year (e.g., 0.9)
      - surv: baseline survival without stress (e.g., 0.9)
-     - wDeer: winter mortality sensitivity for deer (e.g., 0.1–0.3)
 
 3) Predation on deer (linear in predators, capped)
    - Raw kills: killRaw = predAtk * pred * deer
@@ -74,7 +71,6 @@ All formulas use only multiplication, division, addition/subtraction, powers wit
 
 7) Stochasticity (optional toggles)
    - Add small random noise terms ε sampled once per year if desired (keep mean 0)
-   - Severe winters: set winter > 0 for those years; otherwise winter = 0
 
 Constraints and guards
 - Populations are non-negative; fractional values allowed in deterministic mode; integers in stochastic/agent mode via draws.
@@ -82,18 +78,16 @@ Constraints and guards
 
 ### 5) Initialization
 - Choose start year (e.g., 1905) with plausible initial values deer0, pred0, carry0 from historical context.
-- Define annual input series across the horizon: hunt[year], ctrl[year], winter[year].
+- Define annual input series across the horizon: hunt[year], ctrl[year].
 
 ### 6) Parameters (quick ref; Calc I friendly)
 - Vegetation:
   - vegRate: how fast carry regrows toward capMax when it is below the max. Example: vegRate = 0.15 means carry increases by about 15% of its current value this year (before other effects). Range: [0.05, 0.4].
   - capMax: the hard upper limit of how many deer the land can support (units: deer). Pick about 2–5× the first-year carry. Example: if carry0 = 30,000, set capMax between 60,000 and 150,000. Higher capMax allows larger peaks.
   - browse: how strongly extra deer above carry reduce next year’s carry (units: fraction per deer). The drop to carry is browse × (deer − carry). Example: if deer − carry = 10,000 and browse = 0.10, next year’s carry is reduced by 1,000.
-  - winPen: fraction of capMax lost per unit of winter severity. The winter term subtracts winPen × winter × capMax. Example: if winter = 2 and winPen = 0.05 with capMax = 100,000, carry loses 0.05 × 2 × 100,000 = 10,000.
 - Deer:
   - birth: the maximum number of fawns per deer per year in great food years (units: fawns per deer). Actual births scale by food. Range: [0.6, 1.2].
   - surv: baseline fraction of deer that survive natural causes when there is no stress (0–1). Range: [0.6, 0.95].
-  - wDeer: how much winter hurts deer survival per unit of winter. If wDeer = 0.2 and winter = 1, survival is multiplied by (1 − 0.2) = 0.8. Range: [0, 0.3].
 - Predation:
   - predAtk: how strongly predators remove deer (per predator per deer). Higher means more kills for the same pred and deer. Range: [1e-7, 1e-3].
   - predCap: the maximum fraction of the deer herd that predators can remove in one year (0–1). This caps kills so they cannot exceed predCap × deer. Range: [0.05, 0.6].
@@ -103,7 +97,6 @@ Constraints and guards
 - Inputs (per year; not fixed params):
   - hunt: fraction of deer removed by hunting this year (0–1). 0 means no hunting.
   - ctrl: fraction of predators removed by control this year (0–1). 0 means no control.
-  - winter: winter severity index (0 = normal; 1 = harsh; 2 = very harsh). Used in both carry and deer survival.
 
 ### 7) Outputs (quick ref) and logging
 - Annual outputs (saved per year):
@@ -124,7 +117,7 @@ Constraints and guards
 - Derived:
   - food: per-deer food ratio = carry / max(deer, 1), capped at 1 in the code (dimensionless).
   - dDeer: change in deer this year = deerNxt − deer (units: deer). dPred: change in predators = predNxt − pred (units: predators).
-- Event logs: record policy changes (e.g., hunting ban on/off), predator control, and severe winters.
+- Event logs: record policy changes (e.g., hunting ban on/off), predator control.
 - Seeds and configs: record run metadata for full reproducibility.
 
 ### 8) Fit targets and evaluation metrics (Calc I friendly)
@@ -144,7 +137,7 @@ Constraints and guards
 
 ### 10) Test plan (engineering tests — Calc I friendly)
 - Unit tests (deterministic):
-  - Forage logistic step respects bounds: if D=0 and W=0, K increases toward K_max
+  - Forage logistic step respects bounds (K increases toward K_max when D=0)
   - No-negative-population invariant after updates
   - Predation removals increase when P increases, holding others fixed
   - Hunting/control application respects [0,1] bounds and quotas
@@ -155,7 +148,6 @@ Constraints and guards
 - Scenario tests:
   - Predator removal period produces deer peak followed by crash when K is degraded
   - Reintroducing predators reduces deer growth and stabilizes oscillations
-  - Severe winter spike (W_t high) induces expected additional mortality
 - Regression and reproducibility:
   - Fixed seed reproduces identical trajectories and metrics
   - Baseline config hashed; metrics compared against stored golden values with tolerances
@@ -190,10 +182,9 @@ time:
 inputs:
   hunt: [ ... per year ... ]
   ctrl: [ ... per year ... ]
-  winter: [ ... per year ... ]
 params:
-  vegetation: { vegRate: 0.15, capMax: 100000, browse: 0.1, winPen: 0.05 }
-  deer: { birth: 1.0, surv: 0.85, wDeer: 0.2 }
+  vegetation: { vegRate: 0.15, capMax: 100000, browse: 0.1 }
+  deer: { birth: 1.0, surv: 0.85 }
   predation: { predAtk: 0.0001, predCap: 0.3, predEff: 0.0015 }
   predators: { mort: 0.12 }
 init:
@@ -208,16 +199,16 @@ seeds:
 ```text
 function step(state, inputs, params):
   (deer, pred, carry) = state
-  (hunt, ctrl, winter) = inputs
+  (hunt, ctrl) = inputs
 
   # Forage update
-  carryNxt = carry + vegRate*carry*(1 - carry/capMax) - browse*max(0, deer - carry) - winPen*winter*capMax
+  carryNxt = carry + vegRate*carry*(1 - carry/capMax) - browse*max(0, deer - carry)
   carryNxt = clamp(carryNxt, eps, capMax)
 
   # Deer components
   food = min(1, carry / max(deer, 1))
   births = deer * birth * food
-  survNat = surv * (0.5 + 0.5*food) * (1 - wDeer*winter)
+  survNat = surv * (0.5 + 0.5*food)
   survNum = deer * survNat
   huntRem = hunt * deer
 

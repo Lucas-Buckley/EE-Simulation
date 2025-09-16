@@ -14,6 +14,5 @@ class State:
 class Inputs:
     hunt: float
     ctrl: float
-    winter: float
 
 

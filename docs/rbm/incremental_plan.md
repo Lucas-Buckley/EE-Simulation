@@ -29,12 +29,12 @@ This plan breaks the project into very small increments. Each step lists the goa
 - Validate:
   - Unit test ensures function signature and returns a state
 
-### Step 3: Carry update (no browse, no winter)
+### Step 3: Carry update (no browse)
 - Goal: Implement logistic carry growth: `carryNxt = carry + vegRate*carry*(1 - carry/capMax)`
 - Deliverables:
   - `src/rbm/step.py` carry update and clamp to `[eps, capMax]`
 - Validate:
-  - Unit: if `deer=0` and `winter=0`, carry grows toward `capMax`
+  - Unit: if `deer=0`, carry grows toward `capMax`
   - Property: carry never exceeds `capMax`
 
 ### Step 4: Add browse impact
@@ -45,13 +45,12 @@ This plan breaks the project into very small increments. Each step lists the goa
   - Unit: when `deer > carry`, next carry is smaller vs without browse
   - Property: stronger `browse` lowers carry more (monotonic)
 
-### Step 5: Add winter impact on carry
-- Goal: Subtract `winPen * winter * capMax` from carry update.
+### Step 5: Winter impact on carry (no longer implemented)
+- Goal: N/A
 - Deliverables:
-  - Update `step` to include winter penalty
+  - N/A
 - Validate:
-  - Unit: with higher `winter`, carry decreases more
-  - Edge: if `winter=0`, no winter loss applied
+  - N/A
 
 ### Step 6: Food ratio and births
 - Goal: Implement `food = min(1, carry / max(deer, 1))` and `births = deer * birth * food`.
@@ -62,11 +61,11 @@ This plan breaks the project into very small increments. Each step lists the goa
   - Edge: when `carry >= deer`, `food=1`
 
 ### Step 7: Natural survival
-- Goal: Implement `survNat = surv * (0.5 + 0.5*food) * (1 - wDeer*winter)` and `survNum = deer * survNat`.
+- Goal: Implement `survNat = surv * (0.5 + 0.5*food)` and `survNum = deer * survNat`.
 - Deliverables:
   - Update `step` with survival terms
 - Validate:
-  - Unit: higher `winter` reduces `survNat`
+  - Unit: higher `food` increases `survNat`
   - Property: `0 <= survNat <= 1` when params in bounds
 
 ### Step 8: Predation kills (raw and cap)
@@ -117,7 +116,7 @@ This plan breaks the project into very small increments. Each step lists the goa
   - Outputs length equals number of years
 
 ### Step 14: Minimal Kaibab inputs
-- Goal: Create a simple inputs timeline (hunt, ctrl, winter) matching the historical story.
+- Goal: Create a simple inputs timeline (hunt, ctrl) matching the historical story.
 - Deliverables:
   - `configs/kaibab_min.yaml`
 - Validate:

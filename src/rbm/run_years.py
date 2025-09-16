@@ -41,11 +41,7 @@ def run_years(config_path: str, out_csv_path: str) -> List[Dict[str, Any]]:
     years = list(range(start, end + 1))
 
     for i, year in enumerate(years):
-        inputs = Inputs(
-            hunt=cfg.inputs.hunt[i],
-            ctrl=cfg.inputs.ctrl[i],
-            winter=cfg.inputs.winter[i],
-        )
+        inputs = Inputs(hunt=cfg.inputs.hunt[i], ctrl=cfg.inputs.ctrl[i])
 
         next_state, diag = step(state, inputs, params_dict)
 

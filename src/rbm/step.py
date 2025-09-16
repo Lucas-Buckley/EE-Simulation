@@ -18,11 +18,9 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     veg_rate = float(veg.get("vegRate", 0.0))
     cap_max = float(veg.get("capMax", max(state.carry, 1.0)))
     browse = float(veg.get("browse", 0.0))
-    win_pen = float(veg.get("winPen", 0.0))
     deer_p = params.get("deer", {})
     birth_rate = float(deer_p.get("birth", 0.0))
     surv_base = float(deer_p.get("surv", 0.0))
-    w_deer = float(deer_p.get("wDeer", 0.0))
     pred_p = params.get("predation", {})
     pred_atk = float(pred_p.get("predAtk", 0.0))
     pred_cap = float(pred_p.get("predCap", 0.0))
@@ -42,8 +40,8 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
         "browse_loss": browse_loss
     })
 
-    # Step 5: Winter penalty on carry (fraction of capMax per winter unit)
-    winter_loss = win_pen * float(inputs.winter) * cap_max
+    # Step 5: Winter penalty no longer implemented, update next carry
+    winter_loss = 0.0
     carry_next = state.carry + carry_growth - browse_loss - winter_loss
     carry_next = _clamp(carry_next, EPS, cap_max)
     diag.update({
@@ -59,8 +57,8 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
         "births": births
     })
 
-    # Step 7: Natural survival fraction and survivors
-    surv_nat_raw = surv_base * (0.5 + 0.5 * food) * (1.0 - w_deer * float(inputs.winter))
+    # Step 7: Natural survival fraction and survivors (no winter term)
+    surv_nat_raw = surv_base * (0.5 + 0.5 * food)
     surv_nat = _clamp(surv_nat_raw, 0.0, 1.0)
     surv_num = state.deer * surv_nat
     diag.update({

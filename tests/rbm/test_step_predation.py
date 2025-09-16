@@ -7,7 +7,7 @@ from src.rbm.step import step
 class TestStepPredation(unittest.TestCase):
     def test_kill_increases_with_pred(self):
         s = State(deer=1000.0, pred=10.0, carry=1000.0)
-        inp = Inputs(hunt=0.0, ctrl=0.0, winter=0.0)
+        inp = Inputs(hunt=0.0, ctrl=0.0)
         params = {
             "vegetation": {"vegRate": 0.0, "capMax": 100000.0, "browse": 0.0, "winPen": 0.0},
             "deer": {"birth": 0.0, "surv": 1.0, "wDeer": 0.0},
@@ -20,7 +20,7 @@ class TestStepPredation(unittest.TestCase):
 
     def test_kill_is_capped(self):
         s = State(deer=1000.0, pred=1e9, carry=1000.0)
-        inp = Inputs(hunt=0.0, ctrl=0.0, winter=0.0)
+        inp = Inputs(hunt=0.0, ctrl=0.0)
         params = {
             "vegetation": {"vegRate": 0.0, "capMax": 100000.0, "browse": 0.0, "winPen": 0.0},
             "deer": {"birth": 0.0, "surv": 1.0, "wDeer": 0.0},

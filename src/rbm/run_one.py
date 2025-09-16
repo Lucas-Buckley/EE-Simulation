@@ -35,11 +35,7 @@ def run_once(config_path: str, out_csv_path: str) -> Dict[str, Any]:
     year = cfg.time.start
     idx = 0
     state = State(deer=cfg.init.deer, pred=cfg.init.pred, carry=cfg.init.carry)
-    inputs = Inputs(
-        hunt=cfg.inputs.hunt[idx],
-        ctrl=cfg.inputs.ctrl[idx],
-        winter=cfg.inputs.winter[idx],
-    )
+    inputs = Inputs(hunt=cfg.inputs.hunt[idx], ctrl=cfg.inputs.ctrl[idx])
 
     params_dict = asdict(cfg.params)
 

@@ -10,10 +10,10 @@ class TestRunYears(unittest.TestCase):
     def test_run_years_length_and_csv(self):
         data = {
             "time": {"start": 1905, "end": 1907},
-            "inputs": {"hunt": [0, 0, 0], "ctrl": [0, 0, 0], "winter": [0, 0, 0]},
+            "inputs": {"hunt": [0, 0, 0], "ctrl": [0, 0, 0]},
             "params": {
-                "vegetation": {"vegRate": 0.10, "capMax": 1000.0, "browse": 0.0, "winPen": 0.0},
-                "deer": {"birth": 1.0, "surv": 0.9, "wDeer": 0.0},
+                "vegetation": {"vegRate": 0.10, "capMax": 1000.0, "browse": 0.0},
+                "deer": {"birth": 1.0, "surv": 0.9},
                 "predation": {"predAtk": 0.0, "predCap": 0.0, "predEff": 0.0},
                 "predators": {"mort": 0.0},
             },

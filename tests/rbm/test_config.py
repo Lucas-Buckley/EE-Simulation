@@ -17,14 +17,10 @@ def write_tmp_config(data: dict) -> str:
 def base_data():
     return {
         "time": {"start": 1905, "end": 1907},
-        "inputs": {
-            "hunt": [0, 0, 0],
-            "ctrl": [0.3, 0.3, 0.1],
-            "winter": [0, 1, 0],
-        },
+        "inputs": {"hunt": [0, 0, 0], "ctrl": [0.3, 0.3, 0.1]},
         "params": {
-            "vegetation": {"vegRate": 0.15, "capMax": 100000, "browse": 0.10, "winPen": 0.05},
-            "deer": {"birth": 1.0, "surv": 0.85, "wDeer": 0.2},
+            "vegetation": {"vegRate": 0.15, "capMax": 100000, "browse": 0.10},
+            "deer": {"birth": 1.0, "surv": 0.85},
             "predation": {"predAtk": 0.0001, "predCap": 0.3, "predEff": 0.0015},
             "predators": {"mort": 0.12},
         },
@@ -68,6 +64,31 @@ class TestConfig(unittest.TestCase):
             self.assertIn("time.end", str(ctx.exception))
         finally:
             os.remove(path)
+
+    def test_load_from_csv_overrides_time_and_inputs(self):
+        import csv as _csv
+        fd_csv, csv_path = tempfile.mkstemp(suffix=".csv")
+        os.close(fd_csv)
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            w = _csv.writer(f)
+            w.writerow(["Year", "% Deer Hunted", "% Predators Killed"])
+            w.writerow([1901, 0.0, 0.1])
+            w.writerow([1902, 0.2, 0.0])
+
+        data = base_data()
+        data.pop("inputs", None)
+        data["inputsCsv"] = csv_path
+        data["time"] = {"start": 1800, "end": 1801}
+        path = write_tmp_config(data)
+        try:
+            cfg = load_config(path)
+            self.assertEqual(cfg.time.start, 1901)
+            self.assertEqual(cfg.time.end, 1902)
+            self.assertEqual(cfg.inputs.hunt, [0.0, 0.2])
+            self.assertEqual(cfg.inputs.ctrl, [0.1, 0.0])
+        finally:
+            os.remove(path)
+            os.remove(csv_path)
 
 
 if __name__ == "__main__":

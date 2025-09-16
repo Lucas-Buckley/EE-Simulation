@@ -11,10 +11,10 @@ class TestRunOne(unittest.TestCase):
         # Minimal config for one year
         data = {
             "time": {"start": 1905, "end": 1905},
-            "inputs": {"hunt": [0], "ctrl": [0], "winter": [0]},
+            "inputs": {"hunt": [0], "ctrl": [0]},
             "params": {
-                "vegetation": {"vegRate": 0.15, "capMax": 100000, "browse": 0.0, "winPen": 0.0},
-                "deer": {"birth": 1.0, "surv": 0.85, "wDeer": 0.0},
+                "vegetation": {"vegRate": 0.15, "capMax": 100000, "browse": 0.0},
+                "deer": {"birth": 1.0, "surv": 0.85},
                 "predation": {"predAtk": 0.0, "predCap": 0.0, "predEff": 0.0},
                 "predators": {"mort": 0.0},
             },
