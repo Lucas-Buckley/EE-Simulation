@@ -7,6 +7,15 @@ from .state import State, Inputs
 EPS = 1e-9
 
 def _clamp(value: float, low: float, high: float) -> float:
+    """Clamp a number between low and high.
+
+    Inputs:
+      - value: the number to limit
+      - low: the minimum allowed value
+      - high: the maximum allowed value
+    Output:
+      - value clipped so that low <= value <= high
+    """
     if value < low:
         return low
     if value > high:
@@ -14,6 +23,15 @@ def _clamp(value: float, low: float, high: float) -> float:
     return value
 
 def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
+    """Advance the ecosystem by one year using simple rules and return the next state and diagnostics.
+
+    Inputs:
+      - state: current populations and carrying capacity (deer, pred, carry)
+      - inputs: human actions (hunt rate for deer, control rate for predators) for this year
+      - params: model parameters grouped under 'vegetation', 'deer', 'predation', 'predators'
+    Output:
+      - (next_state, diag): next_state is the updated State; diag is a dictionary of intermediate values
+    """
     veg = params.get("vegetation", {})
     veg_rate = float(veg.get("vegRate", 0.0))
     cap_max = float(veg.get("capMax", max(state.carry, 1.0)))

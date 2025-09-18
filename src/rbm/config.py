@@ -74,12 +74,26 @@ class Config:
 
 
 def _require_keys(obj: Dict[str, Any], keys: List[str], ctx: str) -> None:
+    """Ensure a dictionary has all required keys, otherwise raise a helpful error.
+
+    Inputs:
+      - obj: the dictionary being validated (e.g., a section of the loaded config)
+      - keys: list of required key names
+      - ctx: short label for where we are (used to clarify the error message)
+    Output:
+      - None, but raises ValueError if a key is missing.
+    """
     for k in keys:
         if k not in obj:
             raise ValueError(f"Missing key '{k}' in {ctx}")
 
 
 def _load_inputs_csv(path: str) -> Dict[str, Any]:
+    """Read a CSV file of inputs and return years and per-year rates.
+
+    Expected CSV headers: "Year", "% Deer Hunted", "% Predators Killed"
+    Returns a dict: {"years": [...], "hunt": [...], "ctrl": [...]} with values aligned by year.
+    """
     years: List[int] = []
     hunt: List[float] = []
     ctrl: List[float] = []
@@ -102,6 +116,11 @@ def _load_inputs_csv(path: str) -> Dict[str, Any]:
 
 
 def load_config(path: str) -> Config:
+    """Load a simulation config from JSON/YAML and construct a typed Config object.
+
+    - Supports inputs provided as arrays (inputs.hunt/inputs.ctrl) or via an external CSV (inputsCsv).
+    - If a CSV is provided, the simulation year range is overridden to match the CSV years.
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(path)
     with open(path, "r", encoding="utf-8") as f:

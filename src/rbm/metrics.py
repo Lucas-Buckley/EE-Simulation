@@ -4,13 +4,18 @@ from typing import Iterable, List, Tuple
 
 
 def _to_list(seq: Iterable[float]) -> List[float]:
+    """Convert any iterable to a standard Python list of floats."""
     return list(seq)
 
 
 def compute_scaled_mse(observed: Iterable[float], simulated: Iterable[float]) -> float:
-    """Return MSE scaled by mean(observed)^2. Raises ValueError on length mismatch or empty.
+    """Compute mean squared error scaled by the square of the observed mean.
 
-    If mean(observed) == 0, returns the unscaled MSE to avoid division by zero.
+    Inputs:
+      - observed: target values to fit
+      - simulated: predicted/simulated values
+    Output:
+      - a dimensionless error; lower is better. If mean(observed)==0, returns unscaled MSE.
     """
     obs = _to_list(observed)
     sim = _to_list(simulated)
@@ -27,7 +32,13 @@ def compute_scaled_mse(observed: Iterable[float], simulated: Iterable[float]) ->
 
 
 def find_peak(series: Iterable[float]) -> Tuple[float, int]:
-    """Return (peak_value, peak_index) for the maximum value. Raises ValueError if empty."""
+    """Find the maximum value and its index in a series.
+
+    Input:
+      - series: iterable of numeric values
+    Output:
+      - (peak_value, peak_index)
+    """
     seq = _to_list(series)
     if not seq:
         raise ValueError("series must be non-empty")
@@ -38,9 +49,13 @@ def find_peak(series: Iterable[float]) -> Tuple[float, int]:
 def compute_peak_timing_error(
     years_obs: Iterable[int], observed: Iterable[float], years_sim: Iterable[int], simulated: Iterable[float]
 ) -> int:
-    """Absolute difference in peak years between observed and simulated.
+    """Compute absolute difference (in years) between observed and simulated peak timings.
 
-    Raises ValueError if inputs are empty or lengths mismatch or years not strictly increasing.
+    Inputs:
+      - years_obs/years_sim: year labels for each series
+      - observed/simulated: data series aligned with years above
+    Output:
+      - non-negative integer number of years between the two peaks
     """
     y_obs = _to_list(years_obs)
     y_sim = _to_list(years_sim)
@@ -57,7 +72,7 @@ def compute_peak_timing_error(
 
 
 def compute_peak_height_error(observed: Iterable[float], simulated: Iterable[float]) -> float:
-    """Return relative peak height error: |sim_peak - obs_peak| / max(obs_peak, 1e-12)."""
+    """Compute relative peak height error: |sim_peak - obs_peak| / max(obs_peak, 1e-12)."""
     obs = _to_list(observed)
     sim = _to_list(simulated)
     if not obs or not sim:
@@ -85,7 +100,7 @@ def compute_crash_ratio(series: Iterable[float]) -> float:
 
 
 def compute_crash_ratio_error(observed: Iterable[float], simulated: Iterable[float]) -> float:
-    """Absolute difference between simulated and observed crash ratios."""
+    """Compute absolute difference between simulated and observed crash ratios."""
     obs_ratio = compute_crash_ratio(observed)
     sim_ratio = compute_crash_ratio(simulated)
     return abs(sim_ratio - obs_ratio)

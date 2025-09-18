@@ -29,6 +29,14 @@ OUTPUT_FIELDS = [
 
 
 def run_once(config_path: str, out_csv_path: str) -> Dict[str, Any]:
+    """Run a single simulation year and write one row to CSV.
+
+    Inputs:
+      - config_path: path to the config file (provides initial state, parameters, inputs)
+      - out_csv_path: where to write the single-row CSV output
+    Output:
+      - a dict containing the written CSV row (year and diagnostics)
+    """
     cfg = load_config(config_path)
 
     # Initialize state and inputs for the first year

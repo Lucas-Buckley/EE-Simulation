@@ -29,6 +29,14 @@ OUTPUT_FIELDS = [
 
 
 def run_years(config_path: str, out_csv_path: str) -> List[Dict[str, Any]]:
+    """Run the simulation across all years in the config and write a CSV of results.
+
+    Inputs:
+      - config_path: path to the config file with time range, parameters, inputs, and initial state
+      - out_csv_path: where to write the CSV containing one row per year
+    Output:
+      - list of per-year dictionaries (the same rows written to CSV)
+    """
     cfg = load_config(config_path)
     params_dict = asdict(cfg.params)
 
