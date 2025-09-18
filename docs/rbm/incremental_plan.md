@@ -4,6 +4,10 @@ This plan breaks the project into very small increments. Each step lists the goa
 
 > Validation rule: Any time you ask to implement a step, that step must also be validated immediately after implementation. Run the listed validations and report pass/fail before proceeding to the next step.
 
+> Code style rule: Every function must include a brief comment/docstring explaining what it does, its key inputs, and its outputs.
+
+> Plain-English rule: Write comments/docstrings so a non-expert can follow them. Avoid jargon; when you must use a term (e.g., "dict", "group"), define it in plain English and give a short example.
+
 ### Step 0: Repo scaffolding
 - Goal: Set up folders and a minimal README for tracking work.
 - Deliverables:
