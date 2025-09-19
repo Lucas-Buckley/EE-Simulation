@@ -10,6 +10,8 @@ This plan breaks the project into very small increments. Each step lists the goa
 
 > Naming rule: Name functions clearly in plain English to reflect their purpose (e.g., `score_fit` instead of `sf`), and prefer full words over abbreviations unless the term is standard and defined.
 
+> I/O doc rule: For every function, explicitly document inputs (name, type, meaning) and outputs (what is returned, shape/types). Keep examples short and concrete.
+
 ### Step 0: Repo scaffolding
 - Goal: Set up folders and a minimal README for tracking work.
 - Deliverables:
