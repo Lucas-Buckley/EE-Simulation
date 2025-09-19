@@ -10,6 +10,7 @@ from typing import Dict, Any, Tuple, List
 from .config import load_config
 from .run_years import run_years
 from .metrics import compute_scaled_mse
+from .observed import load_deer_observed_csv
 
 
 ParamRanges = Dict[str, Dict[str, Tuple[float, float]]]
@@ -102,12 +103,14 @@ def score_fit(observed_years: List[int], observed_deer: List[float], sim_years: 
 
 def calibrate_random_search(
     config_path: str,
-    observed_years: List[int],
-    observed_deer: List[float],
+    observed_years: List[int] | None,
+    observed_deer: List[float] | None,
     param_ranges: ParamRanges,
     trials: int = 100,
     seed: int = 42,
     out_dir: str | None = None,
+    observed_csv_path: str | None = None,
+    interpolate_observed: bool = True,
 ) -> Tuple[Dict[str, Any], float]:
     """Tune model parameters by trying random values within user-provided ranges.
 
@@ -129,6 +132,17 @@ def calibrate_random_search(
     best_score = float("inf")
     best_params: Dict[str, Any] = base_params_dict
     trial_rows: List[Dict[str, Any]] = []
+
+    # Load observed data from CSV if not provided as arrays. Default to project data/kaibab_deer.csv
+    if observed_years is None or observed_deer is None:
+        if not observed_csv_path:
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+            observed_csv_path = os.path.join(project_root, "data", "kaibab_deer.csv")
+        oy, ov, _ = load_deer_observed_csv(observed_csv_path, interpolate_missing=interpolate_observed)
+        observed_years, observed_deer = oy, ov
+
+    if observed_years is None or observed_deer is None:
+        raise ValueError("Observed data not provided: pass arrays or observed_csv_path")
 
     for t in range(trials):
         cand = _sample_candidate(param_ranges, rng)
@@ -180,5 +194,54 @@ def calibrate_random_search(
             json.dump(best_params, f, indent=2)
 
     return best_params, best_score
+
+
+def calibrate_compare_interpolation(
+    config_path: str,
+    param_ranges: ParamRanges,
+    trials: int = 100,
+    seed: int = 42,
+    out_dir: str | None = None,
+    observed_csv_path: str | None = None,
+) -> Dict[str, Any]:
+    """Run calibration twice: once with interpolation ON and once OFF for observed deer.
+
+    This helps assess sensitivity to filling gaps in observed data. Results and trial logs are
+    saved under out_dir/interp_on and out_dir/interp_off when out_dir is provided.
+
+    Output: dict with keys {"interp_on": {"best_params", "best_score"}, "interp_off": {...}}
+    """
+    results: Dict[str, Any] = {}
+
+    subdir_on = os.path.join(out_dir, "interp_on") if out_dir else None
+    subdir_off = os.path.join(out_dir, "interp_off") if out_dir else None
+
+    best_on, score_on = calibrate_random_search(
+        config_path,
+        observed_years=None,
+        observed_deer=None,
+        param_ranges=param_ranges,
+        trials=trials,
+        seed=seed,
+        out_dir=subdir_on,
+        observed_csv_path=observed_csv_path,
+        interpolate_observed=True,
+    )
+    results["interp_on"] = {"best_params": best_on, "best_score": score_on}
+
+    best_off, score_off = calibrate_random_search(
+        config_path,
+        observed_years=None,
+        observed_deer=None,
+        param_ranges=param_ranges,
+        trials=trials,
+        seed=seed,
+        out_dir=subdir_off,
+        observed_csv_path=observed_csv_path,
+        interpolate_observed=False,
+    )
+    results["interp_off"] = {"best_params": best_off, "best_score": score_off}
+
+    return results
 
 
