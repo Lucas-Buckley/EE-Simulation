@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import csv
 import os
 import random
 import time
@@ -132,6 +133,7 @@ def calibrate_random_search(
     best_score = float("inf")
     best_params: Dict[str, Any] = base_params_dict
     trial_rows: List[Dict[str, Any]] = []
+    best_progress: List[Dict[str, Any]] = []
 
     # Load observed data from CSV if not provided as arrays. Default to project data/kaibab_deer.csv
     if observed_years is None or observed_deer is None:
@@ -184,6 +186,8 @@ def calibrate_random_search(
         if s < best_score:
             best_score = s
             best_params = cand_params
+        # Track progress of best-so-far across trials
+        best_progress.append({"trial": t, "score": s, "best_so_far": best_score})
 
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
@@ -192,6 +196,23 @@ def calibrate_random_search(
             json.dump(trial_rows, f, indent=2)
         with open(os.path.join(out_dir, f"best_params_{ts}.json"), "w", encoding="utf-8") as f:
             json.dump(best_params, f, indent=2)
+        # Also write trials as CSV for easy plotting
+        # Build stable header: union of all keys encountered (sorted)
+        header_keys = set()
+        for row in trial_rows:
+            header_keys.update(row.keys())
+        header = ["trial", "score"] + sorted(k for k in header_keys if k not in ("trial", "score"))
+        with open(os.path.join(out_dir, f"trials_{ts}.csv"), "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=header)
+            w.writeheader()
+            for row in trial_rows:
+                w.writerow(row)
+        # Write best-so-far progress CSV
+        with open(os.path.join(out_dir, f"best_progress_{ts}.csv"), "w", newline="", encoding="utf-8") as f:
+            w = csv.DictWriter(f, fieldnames=["trial", "score", "best_so_far"])
+            w.writeheader()
+            for row in best_progress:
+                w.writerow(row)
 
     return best_params, best_score
 
