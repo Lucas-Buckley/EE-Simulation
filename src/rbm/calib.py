@@ -10,7 +10,12 @@ from typing import Dict, Any, Tuple, List
 
 from .config import load_config
 from .run_years import run_years
-from .metrics import compute_scaled_mse
+from .metrics import (
+    compute_scaled_mse,
+    compute_peak_timing_error,
+    compute_peak_height_error,
+    compute_crash_ratio_error,
+)
 from .observed import load_deer_observed_csv
 
 
@@ -134,6 +139,10 @@ def calibrate_random_search(
     best_params: Dict[str, Any] = base_params_dict
     trial_rows: List[Dict[str, Any]] = []
     best_progress: List[Dict[str, Any]] = []
+    # Track best-so-far for other metrics (lower is better)
+    best_peak_timing = float("inf")
+    best_peak_height = float("inf")
+    best_crash_ratio = float("inf")
 
     # Load observed data from CSV if not provided as arrays. Default to project data/kaibab_deer.csv
     if observed_years is None or observed_deer is None:
@@ -177,8 +186,25 @@ def calibrate_random_search(
                 pass
 
         sim_years, sim_deer = _extract_deer_series(rows)
-        s = score_fit(observed_years, observed_deer, sim_years, sim_deer)
-        trial_row = {"trial": t, "score": s}
+        # Align series by intersecting years for fair metric comparison
+        obs_map = {y: v for y, v in zip(observed_years, observed_deer)}
+        sim_map = {y: v for y, v in zip(sim_years, sim_deer)}
+        years_common = sorted(set(obs_map.keys()) & set(sim_map.keys()))
+        obs_aligned = [obs_map[y] for y in years_common]
+        sim_aligned = [sim_map[y] for y in years_common]
+
+        s = compute_scaled_mse(obs_aligned, sim_aligned)
+        peak_time_err = compute_peak_timing_error(years_common, obs_aligned, years_common, sim_aligned)
+        peak_ht_err = compute_peak_height_error(obs_aligned, sim_aligned)
+        crash_ratio_err = compute_crash_ratio_error(obs_aligned, sim_aligned)
+
+        trial_row = {
+            "trial": t,
+            "score": s,
+            "metric.peak_timing": peak_time_err,
+            "metric.peak_height": peak_ht_err,
+            "metric.crash_ratio": crash_ratio_err,
+        }
         for g, kv in cand.items():
             for n, v in kv.items():
                 trial_row[f"{g}.{n}"] = v
@@ -186,8 +212,21 @@ def calibrate_random_search(
         if s < best_score:
             best_score = s
             best_params = cand_params
-        # Track progress of best-so-far across trials
-        best_progress.append({"trial": t, "score": s, "best_so_far": best_score})
+            # When a new best score is found, capture that trial's metric values
+            best_peak_timing = peak_time_err
+            best_peak_height = peak_ht_err
+            best_crash_ratio = crash_ratio_err
+        best_progress.append({
+            "trial": t,
+            "score": s,
+            "best_so_far": best_score,
+            "peak_timing": peak_time_err,
+            "best_peak_timing": best_peak_timing,
+            "peak_height": peak_ht_err,
+            "best_peak_height": best_peak_height,
+            "crash_ratio": crash_ratio_err,
+            "best_crash_ratio": best_crash_ratio,
+        })
 
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)
@@ -207,9 +246,22 @@ def calibrate_random_search(
             w.writeheader()
             for row in trial_rows:
                 w.writerow(row)
-        # Write best-so-far progress CSV
+        # Write best-so-far progress CSV with additional metrics
         with open(os.path.join(out_dir, f"best_progress_{ts}.csv"), "w", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=["trial", "score", "best_so_far"])
+            w = csv.DictWriter(
+                f,
+                fieldnames=[
+                    "trial",
+                    "score",
+                    "best_so_far",
+                    "peak_timing",
+                    "best_peak_timing",
+                    "peak_height",
+                    "best_peak_height",
+                    "crash_ratio",
+                    "best_crash_ratio",
+                ],
+            )
             w.writeheader()
             for row in best_progress:
                 w.writerow(row)

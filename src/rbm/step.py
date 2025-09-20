@@ -68,7 +68,7 @@ def step(state: State, inputs: Inputs, params: dict) -> Tuple[State, dict]:
     })
 
     # Step 6: Food and births
-    food = min(1.0, carry_next / max(state.deer, 1.0))
+    food = min(1.0, state.carry / max(state.deer, 1.0))
     births = state.deer * birth_rate * food
     diag.update({
         "food": food,

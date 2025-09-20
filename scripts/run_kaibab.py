@@ -34,12 +34,22 @@ def run_years(cfg_path: str, out_csv: str):
 
 def run_calibration(cfg_path: str, out_dir: str, trials: int, seed: int, observed_csv: str, compare: bool):
     from src.rbm.calib import calibrate_random_search, calibrate_compare_interpolation
-    ranges = {
-        "vegetation": {"vegRate": (0.05, 0.25), "capMax": (60000, 180000), "browse": (0.0, 0.2)},
-        "deer": {"birth": (0.6, 1.2), "surv": (0.6, 0.95)},
-        "predation": {"predAtk": (1e-6, 1e-3), "predCap": (0.05, 0.6), "predEff": (1e-4, 5e-3)},
-        "predators": {"mort": (0.05, 0.3)},
-    }
+    # Prefer ranges from config.calibRanges if present
+    try:
+        with open(cfg_path, "r", encoding="utf-8") as f:
+            raw_cfg = json.load(f)
+        raw_ranges = raw_cfg.get("calibRanges")
+    except Exception:
+        raw_ranges = None
+    if raw_ranges:
+        ranges = {g: {k: (float(v[0]), float(v[1])) for k, v in kv.items()} for g, kv in raw_ranges.items()}
+    else:
+        ranges = {
+            "vegetation": {"vegRate": (0.01, 0.6), "capMax": (80000, 400000), "browse": (0.0, 0.6)},
+            "deer": {"birth": (0.5, 1.4), "surv": (0.5, 0.98)},
+            "predation": {"predAtk": (5e-7, 5e-3), "predCap": (0.05, 0.9), "predEff": (5e-5, 1e-2)},
+            "predators": {"mort": (0.03, 0.5)},
+        }
     os.makedirs(out_dir, exist_ok=True)
     if compare:
         res = calibrate_compare_interpolation(
