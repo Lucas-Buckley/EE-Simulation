@@ -130,7 +130,7 @@ Constraints and guards
 - **Stochastic runs**: compute mean and 10th–90th percent bands across many runs; check if observed series mostly falls inside
 
 ### 9) Calibration strategy (Calc I friendly)
-- Grid search or random search over parameter ranges; keep top N by primary fit score
+- Grid search or a random search algorithm over parameter ranges; keep top N by primary fit score
 - Hand-tune near best sets by increasing/decreasing one parameter at a time and re-running
 - Validate by running multiple seeds (if noise enabled) and ensuring targets hold in most runs
 - Record settings, seeds, and results in `experiments/`
@@ -248,5 +248,4 @@ function step(state, inputs, params):
 - Implement `src/rbm` scaffolding and config loader
 - Write tests in `tests/rbm` per Section 10
 - Stand up calibration runner and metric reporters
-
 

@@ -57,7 +57,7 @@ print("Obs crash ratio:", compute_crash_ratio(obs))
 print("Sim crash ratio:", compute_crash_ratio(sim))
 ```
 
-### 5) Random-search calibration
+### 5) Random search algorithm calibration
 ```python
 from src.rbm.calib import calibrate_random_search, calibrate_compare_interpolation
 import os
@@ -104,5 +104,4 @@ print("Wrote:", out_csv)
 - Interpolation: linear fills for observed deer create synthetic points in gaps to stabilize metrics. Compare results with and without interpolation (Section 5).
 - Reproducibility: Provide seeds for calibration and stochastic runs.
 - Outputs: CSVs are written under `experiments/`. Inspect or plot as needed.
-
 

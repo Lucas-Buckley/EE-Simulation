@@ -138,8 +138,8 @@ This plan breaks the project into very small increments. Each step lists the goa
 - Validate:
   - Unit tests with small synthetic series
 
-### Step 16: Calibration loop (grid/random search)
-- Goal: Try parameter sets and keep the best few by metric score.
+### Step 16: Random search algorithm calibration loop
+- Goal: Use the random search algorithm to try parameter sets and keep the best few by metric score.
 - Deliverables:
   - `src/rbm/calib.py`
   - `experiments/<timestamp>/` saved configs and scores
