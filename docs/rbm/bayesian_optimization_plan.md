@@ -26,12 +26,35 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
 ### 1) Plan the Bayesian optimization function
 - **Goal**: Spell out the function interface and settings BO needs so it sits next to `calibrate_random_search` without surprises.
 - **Deliverables**:
-  - Short design notes in this file that cover:
-    - The function name and arguments, for example `calibrate_bayes_opt(...)`.
-    - Which parameter ranges and BO settings (number of trials, exploration weight) we will support.
-    - Which library we will call for BO (for example `scikit-optimize` and its `gp_minimize` helper).
-- **Validation**:
-  - Checklist in this design section confirming the new function lines up with the patterns already used in `calib.py`.
+  - Design notes (below) that cover the interface, configuration options, and backend choice.
+
+#### Proposed interface
+- Function name: `calibrate_bayes_opt`.
+- Location: `src/rbm/bayes_optimize.py`.
+- Signature (plain English):
+  - `config_path` (string): path to the base config file.
+  - `observed_years`, `observed_deer` (optional lists): lets callers pass pre-loaded observations; defaults load from CSV like random search.
+  - `param_ranges` (nested dict of `(low, high)` pairs): same shape we use today.
+  - `iterations` (int, default 40): number of BO suggestions to evaluate.
+  - `seed` (int, default 42): shared random seed.
+  - `out_dir` (optional string): where to write logs, JSON, CSV.
+  - `observed_csv_path` (optional string): path to observed data when arrays are not supplied.
+  - `interpolate_observed` (bool, default True): keep parity with random search path.
+  - `acq_func` (string, default "EI"): acquisition function passed to the backend (`EI`, `PI`, `LCB`).
+  - Returns `(best_params_dict, best_score_float)` just like `calibrate_random_search`.
+
+#### Backend and helper choices
+- Library: `scikit-optimize` (import path `skopt`) using `gp_minimize` for Gaussian-process BO.
+- Search-space conversion: build an ordered list of bounds aligned with a flattened parameter tuple; keep a mapping back to nested dicts.
+- Objective evaluation: reuse the temporary-config approach already in `calibrate_random_search`, writing trial metrics to CSV/JSON.
+- Logging: write `trials_<timestamp>.csv/json`, `best_progress_<timestamp>.csv`, and `best_params_<timestamp>.json` in the same format so downstream tooling keeps working.
+
+#### Validation checklist for this step
+- [x] The argument list mirrors `calibrate_random_search` (same parameter names and defaults where practical).
+- [x] The documented return value matches `(best_params, best_score)`.
+- [x] The plan specifies how we map nested ranges to the optimizer search space.
+- [x] The chosen backend (`skopt.gp_minimize`) is noted along with the acquisition default.
+- [x] Logging expectations match the existing random search artifacts.
 
 ### 2) Build the optimizer helper
 - **Goal**: Add a module that exposes a reusable optimization helper that works without the CLI.
