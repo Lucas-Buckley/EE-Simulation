@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 import csv
 import os
@@ -8,6 +9,7 @@ import time
 from dataclasses import asdict
 from typing import Dict, Any, Tuple, List
 
+from .bayes_optimize import calibrate_bayes_opt
 from .config import load_config
 from .run_years import run_years
 from .metrics import (
@@ -20,6 +22,64 @@ from .observed import load_deer_observed_csv
 
 
 ParamRanges = Dict[str, Dict[str, Tuple[float, float]]]
+
+# Default parameter ranges used when the config file does not define calibRanges.
+DEFAULT_PARAM_RANGES: ParamRanges = {
+    "vegetation": {"vegRate": (0.01, 0.6), "capMax": (80_000.0, 400_000.0), "browse": (0.0, 0.6)},
+    "deer": {"birth": (0.5, 1.4), "surv": (0.5, 0.98)},
+    "predation": {"predAtk": (5e-7, 5e-3), "predCap": (0.05, 0.9), "predEff": (5e-5, 1e-2)},
+    "predators": {"mort": (0.03, 0.5)},
+}
+
+
+def _copy_ranges(ranges: ParamRanges) -> ParamRanges:
+    """Return a fresh copy of parameter bounds so callers can mutate safely."""
+
+    return {
+        group: {name: (float(bounds[0]), float(bounds[1])) for name, bounds in subgroup.items()}
+        for group, subgroup in ranges.items()
+    }
+
+
+def load_param_ranges(config_path: str, fallback: ParamRanges | None = None) -> ParamRanges:
+    """Load calibration ranges from config.calibRanges or fall back to defaults.
+
+    Inputs:
+      - config_path: path to the JSON config file.
+      - fallback: optional dictionary to use when calibRanges is missing.
+
+    Output:
+      - Nested dictionary mapping group and parameter name to (low, high) tuples.
+    """
+
+    base = _copy_ranges(fallback or DEFAULT_PARAM_RANGES)
+    try:
+        with open(config_path, "r", encoding="utf-8") as f:
+            raw = json.load(f)
+    except Exception:
+        return base
+
+    raw_ranges = raw.get("calibRanges")
+    if not isinstance(raw_ranges, dict):
+        return base
+
+    ranges: ParamRanges = {}
+    for group, subgroup in raw_ranges.items():
+        if not isinstance(subgroup, dict):
+            continue
+        ranges[group] = {}
+        for name, bounds in subgroup.items():
+            if not isinstance(bounds, (list, tuple)) or len(bounds) != 2:
+                continue
+            low = float(bounds[0])
+            high = float(bounds[1])
+            if low > high:
+                low, high = high, low
+            ranges[group][name] = (low, high)
+
+    if not ranges:
+        return base
+    return ranges
 
 
 def _deepcopy_params(params: Any) -> Any:
@@ -317,4 +377,69 @@ def calibrate_compare_interpolation(
 
     return results
 
+
+def main_bayes_opt() -> None:
+    """Command-line entry point for Bayesian optimization calibration."""
+
+    parser = argparse.ArgumentParser(description="Bayesian optimization calibration helper")
+    repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+    parser.add_argument(
+        "--config",
+        default=os.path.join(repo_root, "configs", "base.yaml"),
+        help="Path to the config file",
+    )
+    parser.add_argument(
+        "--outdir",
+        default=os.path.join(repo_root, "experiments", "calib_bayes"),
+        help="Where to write calibration artifacts",
+    )
+    parser.add_argument(
+        "--observed",
+        default=os.path.join(repo_root, "data", "kaibab_deer.csv"),
+        help="Observed deer CSV path",
+    )
+    parser.add_argument(
+        "--iterations",
+        type=int,
+        default=40,
+        help="Number of Bayesian optimization evaluations",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
+    parser.add_argument(
+        "--acq",
+        default="EI",
+        choices=["EI", "PI", "LCB"],
+        help="Acquisition function passed to skopt",
+    )
+    parser.add_argument(
+        "--no-interpolate",
+        action="store_true",
+        help="Disable interpolation when loading observed deer",
+    )
+    args = parser.parse_args()
+
+    config_path = os.path.abspath(args.config)
+    out_dir = os.path.abspath(args.outdir)
+    observed = os.path.abspath(args.observed)
+
+    ranges = load_param_ranges(config_path)
+    best_params, best_score = calibrate_bayes_opt(
+        config_path=config_path,
+        observed_years=None,
+        observed_deer=None,
+        param_ranges=ranges,
+        iterations=args.iterations,
+        seed=args.seed,
+        out_dir=out_dir,
+        observed_csv_path=observed,
+        interpolate_observed=not args.no_interpolate,
+        acq_func=args.acq,
+    )
+
+    print("Best score:", best_score)
+    print(json.dumps(best_params, indent=2))
+
+
+if __name__ == "__main__":
+    main_bayes_opt()
 

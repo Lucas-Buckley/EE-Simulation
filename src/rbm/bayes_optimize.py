@@ -227,6 +227,9 @@ def calibrate_bayes_opt(
     if observed_years is None or observed_deer is None:
         raise ValueError("Observed data not provided: pass arrays or observed_csv_path")
 
+    if iterations < 10:
+        raise ValueError("iterations must be at least 10 for gp_minimize to work reliably")
+
     space = _SearchSpace(param_ranges)
     base_params = asdict(cfg.params)
     objective, trials, progress = _objective_factory(

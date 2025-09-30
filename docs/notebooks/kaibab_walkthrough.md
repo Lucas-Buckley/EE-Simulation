@@ -4,7 +4,8 @@ This short guide shows how to:
 - Run a single year and multi-year simulation
 - Load observed deer, with and without interpolation
 - Compute fit metrics
-- Run a simple calibration search
+- Run random search calibration and compare interpolation settings
+- Run Bayesian optimization calibration
 - Produce stochastic bands
 
 All commands assume the repo root as the working directory.
@@ -89,7 +90,35 @@ cmp = calibrate_compare_interpolation(cfg, ranges, trials=30, seed=42, out_dir=o
 print(cmp)
 ```
 
-### 6) Stochastic bands (mean, p10, p90)
+### 6) Bayesian optimization calibration
+```python
+from src.rbm.bayes_optimize import calibrate_bayes_opt
+from src.rbm.calib import load_param_ranges
+import os
+
+cfg = os.path.abspath("configs/base.yaml")
+ranges = load_param_ranges(cfg)
+
+out = os.path.abspath("experiments/calib_bayes")
+best_params, best_score = calibrate_bayes_opt(
+    config_path=cfg,
+    observed_years=None,
+    observed_deer=None,
+    param_ranges=ranges,
+    iterations=25,
+    seed=123,
+    out_dir=out,
+    observed_csv_path=os.path.abspath("data/kaibab_deer.csv"),
+    interpolate_observed=True,
+    acq_func="EI",
+)
+print("Best score:", best_score)
+
+# CLI alternative
+# python scripts/run_kaibab.py calib --optimizer bayes --config configs/base.yaml --trials 25 --seed 123 --acq EI
+```
+
+### 7) Stochastic bands (mean, p10, p90)
 ```python
 from src.rbm.run_stochastic import run_years_stochastic
 import os
@@ -101,7 +130,6 @@ print("Wrote:", out_csv)
 ```
 
 ### Notes
-- Interpolation: linear fills for observed deer create synthetic points in gaps to stabilize metrics. Compare results with and without interpolation (Section 5).
+- Interpolation: linear fills for observed deer create synthetic points in gaps to stabilize metrics. Compare results with and without interpolation (Sections 5 and 6).
 - Reproducibility: Provide seeds for calibration and stochastic runs.
 - Outputs: CSVs are written under `experiments/`. Inspect or plot as needed.
-

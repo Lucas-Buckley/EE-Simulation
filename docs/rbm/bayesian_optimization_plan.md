@@ -75,8 +75,8 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
   - Add an `--optimizer {random, bayes}` flag to `scripts/run_kaibab.py` (if that script is in use).
   - Add a “Bayesian optimization calibration” section to `docs/notebooks/kaibab_walkthrough.md`.
 - **Validation**:
-  - Manual run: `python -c 'from src.rbm.bayes_optimize import calibrate_bayes_opt; ...'` completes at least five iterations without error and writes trial logs.
-  - CLI smoke test: `python scripts/run_kaibab.py --optimizer bayes --config configs/base.yaml --trials 5` exits with code 0 and produces an experiments folder.
+  - [x] Manual run: `python -c 'from src.rbm.bayes_optimize import calibrate_bayes_opt; ...'` completes at least five iterations without error and writes trial logs.
+  - [x] CLI smoke test: `python scripts/run_kaibab.py --optimizer bayes --config configs/base.yaml --trials 10` exits with code 0 and produces an experiments folder.
 
 ### 4) Add comparison tests
 - **Goal**: Show that the BO path improves or at least matches the random search baseline on controlled runs.
