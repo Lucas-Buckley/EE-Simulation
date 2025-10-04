@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import shutil
+import site
 import sys
 
 
@@ -16,6 +17,15 @@ def _ensure_path():
     root = _project_root()
     if root not in sys.path:
         sys.path.insert(0, root)
+    # Ensure user site-packages (where pip --user installs go) is importable
+    user_site = site.getusersitepackages()
+    if isinstance(user_site, str):
+        user_paths = [user_site]
+    else:
+        user_paths = list(user_site)
+    for path in user_paths:
+        if path not in sys.path:
+            sys.path.append(path)
 
 
 def _prepare_output(path: str, *, is_dir: bool) -> None:
@@ -82,6 +92,9 @@ def run_calibration(
         print(f"Calibration compare (interp_on/off) results saved to {out_dir}")
         print(json.dumps(res, indent=2))
     else:
+        import time
+
+        start = time.time()
         if optimizer == "bayes":
             best_params, best_score = calibrate_bayes_opt(
                 config_path=cfg_path,
@@ -107,8 +120,10 @@ def run_calibration(
                 observed_csv_path=observed_csv,
                 interpolate_observed=True,
             )
+        duration = time.time() - start
         print(f"Best score ({label}):", best_score)
         print("Results directory:", out_dir)
+        print(f"Elapsed time ({label}): {duration:.2f} seconds")
         print(json.dumps(best_params, indent=2))
 
 
@@ -126,7 +141,7 @@ def main():
     parser.add_argument("--config", default=os.path.join(_project_root(), "configs", "base.yaml"), dest="config", help="Path to config file")
     parser.add_argument("--outdir", default=os.path.join(_project_root(), "experiments"), dest="outdir", help="Output directory")
     parser.add_argument("--observed", default=os.path.join(_project_root(), "data", "kaibab_deer.csv"), dest="observed", help="Observed deer CSV path")
-    parser.add_argument("--trials", type=int, default=1000, help="Calibration trials/iterations")
+    parser.add_argument("--trials", type=int, default=100, help="Calibration trials/iterations")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--repeats", type=int, default=200, help="Stochastic repeats")
     parser.add_argument(

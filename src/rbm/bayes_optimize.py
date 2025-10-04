@@ -58,24 +58,29 @@ class _SearchSpace:
 
     @property
     def dimensions(self) -> List[Real]:
-        """Return skopt dimension objects for the optimizer."""
+        """Return skopt dimension objects defined on [0, 1] for each parameter."""
 
-        return [Real(low, high, name=f"{group}.{name}") for (group, name), (low, high) in zip(self._order, self._bounds)]
+        return [Real(0.0, 1.0, name=f"{group}.{name}") for (group, name) in self._order]
 
     def dict_to_list(self, params: Dict[str, Dict[str, float]]) -> List[float]:
-        """Flatten a nested parameter dictionary into a list matching the search order."""
+        """Flatten parameters into 0–1 space matching the search order."""
 
         flat: List[float] = []
-        for group, name in self._order:
-            flat.append(float(params[group][name]))
+        for (group, name), (low, high) in zip(self._order, self._bounds):
+            value = float(params[group][name])
+            if high == low:
+                flat.append(0.0)
+            else:
+                flat.append((value - low) / (high - low))
         return flat
 
     def list_to_dict(self, values: Iterable[float], base: Dict[str, Dict[str, float]]) -> Dict[str, Dict[str, float]]:
-        """Inflate a flat list back into a nested parameter dictionary based on a base template."""
+        """Inflate 0–1 values back into real parameter space based on a base template."""
 
         nested = json.loads(json.dumps(base))
-        for (group, name), value in zip(self._order, values):
-            nested[group][name] = float(value)
+        for (group, name), (low, high), value in zip(self._order, self._bounds, values):
+            unit_value = min(max(float(value), 0.0), 1.0)
+            nested[group][name] = low + unit_value * (high - low)
         return nested
 
 

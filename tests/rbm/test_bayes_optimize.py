@@ -27,6 +27,9 @@ class TestSearchSpace(unittest.TestCase):
             "vegetation": {"vegRate": 0.1},
         }
         flat = space.dict_to_list(base)
+        for value in flat:
+            self.assertGreaterEqual(value, 0.0)
+            self.assertLessEqual(value, 1.0)
         rebuilt = space.list_to_dict(flat, base)
         self.assertEqual(rebuilt, base)
 
@@ -78,4 +81,3 @@ class TestObjective(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-

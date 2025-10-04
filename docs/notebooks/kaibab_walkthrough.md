@@ -10,6 +10,11 @@ This short guide shows how to:
 
 All commands assume the repo root as the working directory.
 
+### Quick start (all defaults)
+```bash
+python3 scripts/run_kaibab.py all
+```
+
 ### 1) Single-year run
 ```bash
 python -c 'from src.rbm.run_one import run_once; import os; cfg=os.path.abspath("configs/base.yaml"); out=os.path.abspath("experiments/run_one.csv"); print(run_once(cfg,out))'

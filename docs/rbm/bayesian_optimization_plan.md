@@ -78,7 +78,22 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
   - [x] Manual run: `python -c 'from src.rbm.bayes_optimize import calibrate_bayes_opt; ...'` completes at least five iterations without error and writes trial logs.
   - [x] CLI smoke test: `python scripts/run_kaibab.py --optimizer bayes --config configs/base.yaml --trials 10` exits with code 0 and produces an experiments folder.
 
-### 4) Add comparison tests
+### 4) Optimizer robustness improvements
+- **Goal**: Strengthen Bayesian optimisation performance by addressing scaling, search budget, acquisition balance, and run-to-run variance.
+- **Substep 4.1 — Normalise parameter ranges**
+  - Update `_SearchSpace` to work in 0–1 space and convert back to real parameter values inside the objective.
+  - Validation: [x] unit tests cover the new mapping and the optimiser runs without crashing.
+- **Substep 4.2 — Increase iteration budget**
+  - Run BO with a larger evaluation budget (≥150 iterations) and record the resulting best score/metrics.
+  - Validation: [x] experiments stored under `experiments/bayes_analysis/bo_*` with 150-iteration runs.
+- **Substep 4.3 — Explore acquisition functions**
+  - Re-run the extended budget with at least one non-default acquisition (e.g. `LCB`) and capture scores for comparison.
+  - Validation: [x] scores for EI vs LCB recorded in `experiments/bayes_analysis/summary.json`.
+- **Substep 4.4 — Repeat runs across seeds**
+  - Execute BO (and optionally random search) for several seeds; aggregate best scores to judge variance.
+  - Validation: [x] summary JSON (see path above) aggregates scores for seeds 42/77/101 alongside random-search baselines.
+
+### 5) Add comparison tests
 - **Goal**: Show that the BO path improves or at least matches the random search baseline on controlled runs.
 - **Deliverables**:
   - Synthetic test in `tests/rbm/test_bayes_optimize.py::test_bo_beats_random`:
@@ -89,7 +104,7 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
   - `python -m unittest tests/rbm/test_bayes_optimize.py` and `tests/rbm/test_calib_bo.py` pass locally and in the automated test run (CI).
   - If randomness causes flakes, add fixed seeds and describe them in the test docstrings.
 
-### 5) Document how to run it and what we learned
+### 6) Document how to run it and what we learned
 - **Goal**: Capture how to run, compare, and explain the new optimizer for the essay.
 - **Deliverables**:
   - Update `docs/notebooks/kaibab_walkthrough.md` and/or add `docs/rbm/bayes_opt_results.md` with:
@@ -101,7 +116,7 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
   - Re-run the notebook or markdown steps end-to-end to confirm the commands still work.
   - Store the latest experiment metrics in `experiments/bayes_opt/summary.json` so we can cite them in the essay.
 
-### 6) Optional stretch: explore uncertainty near the best answer
+### 7) Optional stretch: explore uncertainty near the best answer
 - **Goal**: If time remains, sample around the BO best point to describe parameter uncertainty.
 - **Deliverables**:
   - Script `src/rbm/bayes_opt_post.py` that perturbs the best-found parameters and re-evaluates the metrics.
