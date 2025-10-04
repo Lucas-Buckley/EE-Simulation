@@ -1,8 +1,11 @@
 import json
 import os
+import random
+from typing import List
 import unittest
 from unittest import mock
 
+from skopt import gp_minimize
 from skopt.space import Real
 
 from src.rbm import bayes_optimize
@@ -77,6 +80,35 @@ class TestObjective(unittest.TestCase):
         self.assertAlmostEqual(value_one, value_two)
         self.assertEqual(len(trials), 2)
         self.assertEqual(trials[0]["score"], value_one)
+
+
+class TestBoBeatsRandom(unittest.TestCase):
+    def test_bo_outperforms_random_on_quadratic(self) -> None:
+        ranges = {"scalar": {"x": (-1.0, 1.0)}}
+        space = bayes_optimize._SearchSpace(ranges)
+
+        def objective_from_unit(flat: List[float]) -> float:
+            params = space.list_to_dict(flat, {"scalar": {"x": 0.0}})
+            x = params["scalar"]["x"]
+            return (x - 0.25) ** 2
+
+        seeds = [0, 1]
+        for seed in seeds:
+            res_bo = gp_minimize(
+                func=objective_from_unit,
+                dimensions=space.dimensions,
+                n_calls=25,
+                random_state=seed,
+                acq_func="EI",
+            )
+            rng = random.Random(seed)
+            best_random = float("inf")
+            for _ in range(25):
+                u = rng.uniform(0.0, 1.0)
+                val = objective_from_unit([u])
+                best_random = min(best_random, val)
+            best_bo = float(res_bo.fun)
+            self.assertLessEqual(best_bo, best_random + 1e-4)
 
 
 if __name__ == "__main__":

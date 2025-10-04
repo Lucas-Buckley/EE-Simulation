@@ -14,6 +14,8 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
 
 > Language rule: Write everything in plain English unless it is functional code.
 
+> Multi-seed evaluation rule: For any evaluative or analytical test run, execute the experiment with at least two distinct random seeds and record their outcomes.
+
 ### 0) Baseline sanity check
 - **Goal**: Confirm the current configuration and metrics run cleanly so we have a reference point.
 - **Deliverables**:
@@ -101,10 +103,29 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
   - Integration test `tests/rbm/test_calib_bo.py` that runs both optimizers for a very small trial count (about four runs) on the actual simulator and checks that the BO score is no worse than a small allowance above the random score.
   - Fixture helpers that stub `run_years` so the tests stay fast.
 - **Validation**:
-  - `python -m unittest tests/rbm/test_bayes_optimize.py` and `tests/rbm/test_calib_bo.py` pass locally and in the automated test run (CI).
-  - If randomness causes flakes, add fixed seeds and describe them in the test docstrings.
+  - [x] `python -m unittest tests/rbm/test_bayes_optimize.py` and `tests/rbm/test_calib_bo.py` pass locally and in the automated test run (CI).
+  - [x] Fixed seeds (`[0, 1]`) documented in tests to avoid flakiness.
 
-### 6) Document how to run it and what we learned
+### 6) Implement random+GP hybrid optimizer
+- **Goal**: Combine a large random-search sweep with a short Gaussian-process refinement.
+- **Substep 6.1 — Design hybrid API**
+  - Add a helper (e.g., `calibrate_hybrid`) that accepts `random_trials`, `gp_iterations`, and an optional warm-start size.
+  - Validation: design notes capture signature, logging expectations, and how results are returned.
+- **Substep 6.2 — Implement hybrid runner**
+  - Reuse `calibrate_random_search` for the first phase; feed the best K configurations into a short `gp_minimize` run (≤60 calls).
+  - Ensure artefacts are saved in a single directory with clear stage metadata.
+  - Validation: unit test verifies warm-start extraction and that the GP phase runs when K>0.
+- **Substep 6.3 — Evaluate hybrid on multiple seeds**
+  - Run the hybrid for at least two seeds alongside baseline random search; store metrics in `experiments/hybrid_compare/summary.json`.
+  - Validation: summary includes best/mean scores, durations, and notes whether the refinement improved results.
+- **Substep 6.4 — Integrate CLI support**
+  - Extend `scripts/run_kaibab.py` with an option like `--optimizer hybrid` that exposes the two-phase workflow.
+  - Validation: CLI run produces expected directories and prints timing for both stages.
+- **Substep 6.5 — Update strategy comparison suite**
+  - Modify the `MultiStrategyEvaluator` helper to compare three pipelines: random search, pure Gaussian-process BO, and the new hybrid.
+  - Validation: running the evaluator writes summary stats for these three modes only and seeds the hybrid with the same random trials used for comparison.
+
+### 7) Document how to run it and what we learned
 - **Goal**: Capture how to run, compare, and explain the new optimizer for the essay.
 - **Deliverables**:
   - Update `docs/notebooks/kaibab_walkthrough.md` and/or add `docs/rbm/bayes_opt_results.md` with:
@@ -115,14 +136,6 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
 - **Validation**:
   - Re-run the notebook or markdown steps end-to-end to confirm the commands still work.
   - Store the latest experiment metrics in `experiments/bayes_opt/summary.json` so we can cite them in the essay.
-
-### 7) Optional stretch: explore uncertainty near the best answer
-- **Goal**: If time remains, sample around the BO best point to describe parameter uncertainty.
-- **Deliverables**:
-  - Script `src/rbm/bayes_opt_post.py` that perturbs the best-found parameters and re-evaluates the metrics.
-  - Plot of score versus parameter samples saved under `experiments/bayes_opt/posterior.png`.
-- **Validation**:
-  - Lightweight test that runs the perturbation script and produces a CSV; skip deeper statistical checks to keep runtime low.
 
 ### Test summary
 - Unit: bound conversion, deterministic objective scoring, BO helper utilities.
