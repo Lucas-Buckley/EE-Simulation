@@ -46,7 +46,7 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
   - Returns `(best_params_dict, best_score_float)` just like `calibrate_random_search`.
 
 #### Backend and helper choices
-- Library: `scikit-optimize` (import path `skopt`) using `gp_minimize` for Gaussian-process BO.
+- Library: `scikit-optimize` (import path `skopt`) using `gp_minimize` for Bayesian optimization (Gaussian-process surrogate under the hood).
 - Search-space conversion: build an ordered list of bounds aligned with a flattened parameter tuple; keep a mapping back to nested dicts.
 - Objective evaluation: reuse the temporary-config approach already in `calibrate_random_search`, writing trial metrics to CSV/JSON.
 - Logging: write `trials_<timestamp>.csv/json`, `best_progress_<timestamp>.csv`, and `best_params_<timestamp>.json` in the same format so downstream tooling keeps working.
@@ -106,23 +106,23 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
   - [x] `python -m unittest tests/rbm/test_bayes_optimize.py` and `tests/rbm/test_calib_bo.py` pass locally and in the automated test run (CI).
   - [x] Fixed seeds (`[0, 1]`) documented in tests to avoid flakiness.
 
-### 6) Implement random+GP hybrid optimizer
-- **Goal**: Combine a large random-search sweep with a short Gaussian-process refinement.
+### 6) Implement random search + Bayesian optimization hybrid
+- **Goal**: Combine a large random-search sweep with a short Bayesian optimization refinement (Gaussian-process surrogate under the hood).
 - **Substep 6.1 — Design hybrid API**
-  - Add a helper (e.g., `calibrate_hybrid`) that accepts `random_trials`, `gp_iterations`, and an optional warm-start size.
+  - Add a helper (e.g., `calibrate_hybrid`) that accepts `random_trials`, `bo_iterations`, and an optional warm-start size.
   - Validation: design notes capture signature, logging expectations, and how results are returned.
 - **Substep 6.2 — Implement hybrid runner**
-  - Reuse `calibrate_random_search` for the first phase; feed the best K configurations into a short `gp_minimize` run (≤60 calls).
+  - Reuse `calibrate_random_search` for the first phase; feed the best K configurations into a short Bayesian optimization run via `gp_minimize` (≤60 calls).
   - Ensure artefacts are saved in a single directory with clear stage metadata.
-  - Validation: unit test verifies warm-start extraction and that the GP phase runs when K>0.
+  - Validation: unit test verifies warm-start extraction and that the Bayesian refinement runs when K>0.
 - **Substep 6.3 — Evaluate hybrid on multiple seeds**
   - Run the hybrid for at least two seeds alongside baseline random search; store metrics in `experiments/hybrid_compare/summary.json`.
   - Validation: summary includes best/mean scores, durations, and notes whether the refinement improved results.
 - **Substep 6.4 — Integrate CLI support**
-  - Extend `scripts/run_kaibab.py` with an option like `--optimizer hybrid` that exposes the two-phase workflow.
+  - Extend `scripts/run_kaibab.py` with an option like `--optimizer hybrid` that exposes the random search + Bayesian optimization workflow.
   - Validation: CLI run produces expected directories and prints timing for both stages.
 - **Substep 6.5 — Update strategy comparison suite**
-  - Modify the `MultiStrategyEvaluator` helper to compare three pipelines: random search, pure Gaussian-process BO, and the new hybrid.
+  - Modify the `MultiStrategyEvaluator` helper to compare three pipelines: random search, pure Bayesian optimization, and the new hybrid.
   - Validation: running the evaluator writes summary stats for these three modes only and seeds the hybrid with the same random trials used for comparison.
 
 ### 7) Document how to run it and what we learned
