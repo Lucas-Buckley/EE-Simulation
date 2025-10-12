@@ -7,14 +7,15 @@ import time
 from dataclasses import asdict
 from pathlib import Path
 from statistics import mean, pstdev
-from typing import Any, Dict, Iterable, List, Optional, Sequence
+from typing import Any, Dict, List, Optional, Sequence
 
-from skopt import forest_minimize, gbrt_minimize, gp_minimize
+from skopt import gp_minimize
 
 from .bayes_optimize import _SearchSpace, _objective_factory
 from .calib import calibrate_random_search, load_param_ranges
 from .config import load_config
 from .observed import load_deer_observed_csv
+from .hybrid import calibrate_hybrid
 
 
 class MultiStrategyEvaluator:
@@ -27,10 +28,8 @@ class MultiStrategyEvaluator:
         seeds: Sequence[int] = (42, 77),
         random_trials: int = 150,
         gp_iterations: int = 150,
-        forest_iterations: int = 150,
-        gbrt_iterations: int = 150,
-        hybrid_forest_iterations: int = 120,
-        hybrid_gp_iterations: int = 80,
+        hybrid_random_trials: int = 120,
+        hybrid_bo_iterations: int = 60,
         warm_start_top_k: int = 10,
         out_dir: str | None = None,
     ) -> None:
@@ -39,10 +38,8 @@ class MultiStrategyEvaluator:
         self.seeds = list(seeds)
         self.random_trials = random_trials
         self.gp_iterations = gp_iterations
-        self.forest_iterations = forest_iterations
-        self.gbrt_iterations = gbrt_iterations
-        self.hybrid_forest_iterations = hybrid_forest_iterations
-        self.hybrid_gp_iterations = hybrid_gp_iterations
+        self.hybrid_random_trials = hybrid_random_trials
+        self.hybrid_bo_iterations = hybrid_bo_iterations
         self.warm_start_top_k = warm_start_top_k
         self.base_out_dir = Path(out_dir or (Path("experiments") / "strategy_compare"))
         self.base_out_dir.mkdir(parents=True, exist_ok=True)
@@ -61,8 +58,6 @@ class MultiStrategyEvaluator:
         summaries: Dict[str, Any] = {}
         summaries["random"] = self._run_random()
         summaries["gp"] = self._run_gp()
-        summaries["forest"] = self._run_forest()
-        summaries["gbrt"] = self._run_gbrt()
         summaries["hybrid"] = self._run_hybrid()
         return self._compute_stats(summaries)
 
@@ -101,7 +96,7 @@ class MultiStrategyEvaluator:
         for seed in self.seeds:
             results.extend(
                 self._run_skopt_strategy(
-                    strategy="gp",
+                    strategy="bayes",
                     minimize_func=gp_minimize,
                     iterations=self.gp_iterations,
                     seed=seed,
@@ -110,91 +105,34 @@ class MultiStrategyEvaluator:
             )
         return results
 
-    def _run_forest(self) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
-        for seed in self.seeds:
-            results.extend(
-                self._run_skopt_strategy(
-                    strategy="forest",
-                    minimize_func=forest_minimize,
-                    iterations=self.forest_iterations,
-                    seed=seed,
-                )
-            )
-        return results
-
-    def _run_gbrt(self) -> List[Dict[str, Any]]:
-        results: List[Dict[str, Any]] = []
-        for seed in self.seeds:
-            try:
-                results.extend(
-                    self._run_skopt_strategy(
-                        strategy="gbrt",
-                        minimize_func=gbrt_minimize,
-                        iterations=self.gbrt_iterations,
-                        seed=seed,
-                    )
-                )
-            except ValueError as exc:
-                results.append(
-                    {
-                        "seed": seed,
-                        "best_score": None,
-                        "duration_sec": None,
-                        "out_dir": str(self.base_out_dir / "gbrt" / f"seed_{seed}"),
-                        "error": str(exc),
-                        "iterations": self.gbrt_iterations,
-                    }
-                )
-        return results
-
     def _run_hybrid(self) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
         for seed in self.seeds:
-            forest_dir = self._prep_out_dir("hybrid_forest", seed)
-            gp_dir = self._prep_out_dir("hybrid_gp", seed)
-
-            # Stage 1: forest exploration
-            forest_logs = self._run_skopt_strategy(
-                strategy="hybrid_forest",
-                minimize_func=forest_minimize,
-                iterations=self.hybrid_forest_iterations,
+            out_dir = self._prep_out_dir("hybrid", seed)
+            best_params, best_score, stage_logs = calibrate_hybrid(
+                config_path=self.config_path,
+                param_ranges=self.param_ranges,
+                random_trials=self.hybrid_random_trials,
+                bo_iterations=self.hybrid_bo_iterations,
+                warm_start_k=self.warm_start_top_k,
                 seed=seed,
-                out_dir_override=forest_dir,
-                return_logs=True,
-            )
-            assert isinstance(forest_logs, tuple)
-            forest_results, trials = forest_logs
-
-            # Prepare warm start points (top-K by score)
-            space = _SearchSpace(self.param_ranges)
-            sorted_trials = sorted(trials, key=lambda r: r["score"])[: self.warm_start_top_k]
-            x0 = [[row[f"{g}.{n}"] for (g, n) in space._order] for row in sorted_trials]
-            y0 = [row["score"] for row in sorted_trials]
-
-            # Stage 2: GP refinement with warm start
-            gp_result_list = self._run_skopt_strategy(
-                strategy="hybrid_gp",
-                minimize_func=gp_minimize,
-                iterations=self.hybrid_gp_iterations + len(x0),
-                seed=seed,
+                out_dir=str(out_dir),
+                observed_years=self.observed_years,
+                observed_deer=self.observed_deer,
+                observed_csv_path=None,
+                interpolate_observed=True,
                 acq_func="EI",
-                out_dir_override=gp_dir,
-                warm_start=(x0, y0),
             )
-            if isinstance(gp_result_list, tuple):
-                gp_results = gp_result_list[0]
-            else:
-                gp_results = gp_result_list
-
-            # Combined result uses GP refinement score but references both dirs
-            final_entry = gp_results[0].copy()
-            final_entry["seed"] = seed
-            final_entry["stage_dirs"] = {
-                "forest": str(forest_dir),
-                "gp": str(gp_dir),
-            }
-            results.append(final_entry)
+            results.append(
+                {
+                    "seed": seed,
+                    "best_score": best_score,
+                    "duration_sec": stage_logs["random"]["duration_sec"] + stage_logs["bayes"]["duration_sec"],
+                    "out_dir": str(out_dir),
+                    "config": best_params,
+                    "stages": stage_logs,
+                }
+            )
         return results
 
     # --- Helpers ----------------------------------------------------------

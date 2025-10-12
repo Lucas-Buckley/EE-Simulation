@@ -214,11 +214,20 @@ def calibrate_bayes_opt(
     observed_csv_path: str | None = None,
     interpolate_observed: bool = True,
     acq_func: str = "EI",
+    warm_start: tuple[List[List[float]], List[float]] | None = None,
 ) -> Tuple[Dict[str, Any], float]:
     """Tune model parameters with Bayesian optimization.
 
-    Inputs mirror `calibrate_random_search` and return the same tuple:
-    (best_parameters, best_score).
+    Inputs mirror `calibrate_random_search`:
+      - config_path / param_ranges / seed / out_dir: as in random search.
+      - observed_years / observed_deer or observed_csv_path / interpolate_observed: supply observed data.
+      - iterations: total Bayesian optimisation evaluations.
+      - acq_func: acquisition function name for `gp_minimize`.
+      - warm_start: optional `(x0, y0)` lists to seed the optimiser with existing trials (values in
+        normalised 0–1 space produced by `_SearchSpace`).
+
+    Output:
+      - `(best_params_dict, best_score_float)` describing the lowest error found.
     """
 
     cfg = load_config(config_path)
@@ -247,13 +256,19 @@ def calibrate_bayes_opt(
         seed,
     )
 
-    result = gp_minimize(
+    minimize_kwargs = dict(
         func=objective,
         dimensions=space.dimensions,
         n_calls=iterations,
         random_state=seed,
         acq_func=acq_func,
     )
+    if warm_start is not None:
+        x0, y0 = warm_start
+        if x0 and y0:
+            minimize_kwargs["x0"] = x0
+            minimize_kwargs["y0"] = y0
+    result = gp_minimize(**minimize_kwargs)
 
     best_params = space.list_to_dict(result.x, base_params)
     best_score = float(result.fun)

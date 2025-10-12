@@ -110,20 +110,29 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
 - **Goal**: Combine a large random-search sweep with a short Bayesian optimization refinement (Gaussian-process surrogate under the hood).
 - **Substep 6.1 — Design hybrid API**
   - Add a helper (e.g., `calibrate_hybrid`) that accepts `random_trials`, `bo_iterations`, and an optional warm-start size.
-  - Validation: design notes capture signature, logging expectations, and how results are returned.
+  - Validation: [x] helper signature implemented in `src/rbm/hybrid.py`; returns `(best_params, best_score, stage_logs)` matching the plan.
 - **Substep 6.2 — Implement hybrid runner**
   - Reuse `calibrate_random_search` for the first phase; feed the best K configurations into a short Bayesian optimization run via `gp_minimize` (≤60 calls).
   - Ensure artefacts are saved in a single directory with clear stage metadata.
-  - Validation: unit test verifies warm-start extraction and that the Bayesian refinement runs when K>0.
+  - Validation: [x] `tests/rbm/test_hybrid.py::test_warm_start_passed` verifies warm-start extraction and both stage directories.
 - **Substep 6.3 — Evaluate hybrid on multiple seeds**
   - Run the hybrid for at least two seeds alongside baseline random search; store metrics in `experiments/hybrid_compare/summary.json`.
-  - Validation: summary includes best/mean scores, durations, and notes whether the refinement improved results.
+  - Validation: [x] `experiments/strategy_compare/summary.json` captures random, BO, and hybrid metrics for seeds 42 and 77.
 - **Substep 6.4 — Integrate CLI support**
   - Extend `scripts/run_kaibab.py` with an option like `--optimizer hybrid` that exposes the random search + Bayesian optimization workflow.
-  - Validation: CLI run produces expected directories and prints timing for both stages.
+  - Validation: [x] CLI now supports `--optimizer hybrid` plus hybrid-specific arguments and prints per-stage timings.
 - **Substep 6.5 — Update strategy comparison suite**
   - Modify the `MultiStrategyEvaluator` helper to compare three pipelines: random search, pure Bayesian optimization, and the new hybrid.
-  - Validation: running the evaluator writes summary stats for these three modes only and seeds the hybrid with the same random trials used for comparison.
+  - Validation: [x] `src/rbm/opt_compare.py` reports those three strategies and persists a consolidated summary JSON.
+- **Substep 6.6 — Parameter sweep test class**
+  - Design a test harness that sweeps hybrid parameters across broad ranges and reports metrics to help tune defaults. Proposed ranges:
+    - `random_trials`: {100, 200, 400}
+    - `bo_iterations`: {20, 40, 60, 80}
+    - `warm_start_k`: 1–50 (inclusive)
+    - `acq_func`: {"EI", "PI", "LCB"}
+    - Seeds: {42, 77}
+  - For each combination, record best score, mean score, and runtime; summarise in `experiments/hybrid_sweep/summary.json`.
+  - Validation: plan and discuss ranges with the user before implementation; final test class should be in `tests/rbm/test_hybrid_sweep.py` with subtests covering the grid (or sampled subset).
 
 ### 7) Document how to run it and what we learned
 - **Goal**: Capture how to run, compare, and explain the new optimizer for the essay.

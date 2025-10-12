@@ -177,6 +177,7 @@ def calibrate_random_search(
     out_dir: str | None = None,
     observed_csv_path: str | None = None,
     interpolate_observed: bool = True,
+    return_trials: bool = False,
 ) -> Tuple[Dict[str, Any], float]:
     """Tune model parameters by trying random values within user-provided ranges.
 
@@ -187,9 +188,12 @@ def calibrate_random_search(
       - trials: how many random samples to evaluate
       - seed: random seed for reproducibility
       - out_dir: optional directory to save a JSON file of all trial results and the best parameters
+      - observed_csv_path / interpolate_observed: control loading of observed data when arrays omitted
+      - return_trials: when True, also return the list of per-trial dictionaries for downstream use
 
     Output:
-      - (best_parameters_as_dict, best_score_value)
+      - `(best_params, best_score)` by default, or `(best_params, best_score, trial_rows)` when
+        `return_trials` is True.
     """
     cfg = load_config(config_path)
     base_params_dict = _deepcopy_params(cfg.params)
@@ -326,6 +330,8 @@ def calibrate_random_search(
             for row in best_progress:
                 w.writerow(row)
 
+    if return_trials:
+        return best_params, best_score, trial_rows
     return best_params, best_score
 
 
@@ -442,4 +448,3 @@ def main_bayes_opt() -> None:
 
 if __name__ == "__main__":
     main_bayes_opt()
-

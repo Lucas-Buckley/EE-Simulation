@@ -66,6 +66,9 @@ def run_calibration(
     compare: bool,
     optimizer: str,
     acq_func: str,
+    hybrid_random_trials: int,
+    hybrid_bo_iterations: int,
+    hybrid_warm_k: int,
 ):
     from src.rbm.calib import (
         calibrate_random_search,
@@ -73,9 +76,10 @@ def run_calibration(
         load_param_ranges,
     )
     from src.rbm.bayes_optimize import calibrate_bayes_opt
+    from src.rbm.hybrid import calibrate_hybrid
 
     ranges = load_param_ranges(cfg_path)
-    label = "random" if optimizer == "random" else "bayes"
+    label = optimizer
     out_dir = os.path.join(base_out_dir, label)
     _prepare_output(out_dir, is_dir=True)
     if compare:
@@ -108,6 +112,21 @@ def run_calibration(
                 interpolate_observed=True,
                 acq_func=acq_func,
             )
+        elif optimizer == "hybrid":
+            best_params, best_score, stage_info = calibrate_hybrid(
+                config_path=cfg_path,
+                param_ranges=ranges,
+                random_trials=hybrid_random_trials,
+                bo_iterations=hybrid_bo_iterations,
+                warm_start_k=hybrid_warm_k,
+                seed=seed,
+                out_dir=out_dir,
+                observed_years=None,
+                observed_deer=None,
+                observed_csv_path=observed_csv,
+                interpolate_observed=True,
+                acq_func=acq_func,
+            )
         else:
             best_params, best_score = calibrate_random_search(
                 cfg_path,
@@ -125,6 +144,9 @@ def run_calibration(
         print("Results directory:", out_dir)
         print(f"Elapsed time ({label}): {duration:.2f} seconds")
         print(json.dumps(best_params, indent=2))
+        if optimizer == "hybrid":
+            print("Stage summaries:")
+            print(json.dumps(stage_info, indent=2))
 
 
 def run_stochastic(cfg_path: str, out_csv: str, repeats: int, seed: int):
@@ -141,12 +163,12 @@ def main():
     parser.add_argument("--config", default=os.path.join(_project_root(), "configs", "base.yaml"), dest="config", help="Path to config file")
     parser.add_argument("--outdir", default=os.path.join(_project_root(), "experiments"), dest="outdir", help="Output directory")
     parser.add_argument("--observed", default=os.path.join(_project_root(), "data", "kaibab_deer.csv"), dest="observed", help="Observed deer CSV path")
-    parser.add_argument("--trials", type=int, default=100, help="Calibration trials/iterations")
+    parser.add_argument("--trials", type=int, default=100, help="Calibration trials/iterations (random or Bayesian)")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--repeats", type=int, default=200, help="Stochastic repeats")
     parser.add_argument(
         "--optimizer",
-        choices=["random", "bayes"],
+        choices=["random", "bayes", "hybrid"],
         default="random",
         help="Calibration optimizer to use",
     )
@@ -156,6 +178,9 @@ def main():
         default="EI",
         help="Acquisition function (when --optimizer bayes)",
     )
+    parser.add_argument("--hybrid-random-trials", type=int, default=200, help="Random-search trials for hybrid mode")
+    parser.add_argument("--hybrid-bo-iterations", type=int, default=60, help="Bayesian refinement iterations for hybrid mode")
+    parser.add_argument("--hybrid-warm-k", type=int, default=10, help="Number of top random trials to warm-start the Bayesian phase")
     args = parser.parse_args()
 
     cfg = os.path.abspath(args.config)
@@ -181,19 +206,25 @@ def main():
             compare=False,
             optimizer=args.optimizer,
             acq_func=args.acq,
+            hybrid_random_trials=args.hybrid_random_trials,
+            hybrid_bo_iterations=args.hybrid_bo_iterations,
+            hybrid_warm_k=args.hybrid_warm_k,
         )
         if args.action == "all":
-            alt_optimizer = "bayes" if args.optimizer == "random" else "random"
-            run_calibration(
-                cfg,
-                os.path.join(outdir, "calib"),
-                args.trials,
-                args.seed,
-                observed,
-                compare=False,
-                optimizer=alt_optimizer,
-                acq_func=args.acq,
-            )
+            for alt in (opt for opt in ["random", "bayes", "hybrid"] if opt != args.optimizer):
+                run_calibration(
+                    cfg,
+                    os.path.join(outdir, "calib"),
+                    args.trials,
+                    args.seed,
+                    observed,
+                    compare=False,
+                    optimizer=alt,
+                    acq_func=args.acq,
+                    hybrid_random_trials=args.hybrid_random_trials,
+                    hybrid_bo_iterations=args.hybrid_bo_iterations,
+                    hybrid_warm_k=args.hybrid_warm_k,
+                )
 
     if args.action == "calib-compare":
         run_calibration(
@@ -205,6 +236,9 @@ def main():
             compare=True,
             optimizer=args.optimizer,
             acq_func=args.acq,
+            hybrid_random_trials=args.hybrid_random_trials,
+            hybrid_bo_iterations=args.hybrid_bo_iterations,
+            hybrid_warm_k=args.hybrid_warm_k,
         )
 
     if args.action in ("stoch", "all"):
