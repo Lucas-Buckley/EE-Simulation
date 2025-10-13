@@ -7,7 +7,7 @@ import os
 import random
 import time
 from dataclasses import asdict
-from typing import Dict, Any, Tuple, List
+from typing import Dict, Any, Tuple, List, Union
 
 from .bayes_optimize import calibrate_bayes_opt
 from .config import load_config
@@ -178,7 +178,10 @@ def calibrate_random_search(
     observed_csv_path: str | None = None,
     interpolate_observed: bool = True,
     return_trials: bool = False,
-) -> Tuple[Dict[str, Any], float]:
+) -> Union[
+    Tuple[Dict[str, Any], float],
+    Tuple[Dict[str, Any], float, List[Dict[str, Any]]],
+]:
     """Tune model parameters by trying random values within user-provided ranges.
 
     Inputs:

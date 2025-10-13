@@ -125,14 +125,14 @@ This plan layers a Bayesian optimization (BO) tuner on top of the existing rule-
   - Modify the `MultiStrategyEvaluator` helper to compare three pipelines: random search, pure Bayesian optimization, and the new hybrid.
   - Validation: [x] `src/rbm/opt_compare.py` reports those three strategies and persists a consolidated summary JSON.
 - **Substep 6.6 — Parameter sweep test class**
-  - Design a test harness that sweeps hybrid parameters across broad ranges and reports metrics to help tune defaults. Proposed ranges:
-    - `random_trials`: {100, 200, 400}
-    - `bo_iterations`: {20, 40, 60, 80}
-    - `warm_start_k`: 1–50 (inclusive)
-    - `acq_func`: {"EI", "PI", "LCB"}
-    - Seeds: {42, 77}
-  - For each combination, record best score, mean score, and runtime; summarise in `experiments/hybrid_sweep/summary.json`.
-  - Validation: plan and discuss ranges with the user before implementation; final test class should be in `tests/rbm/test_hybrid_sweep.py` with subtests covering the grid (or sampled subset).
+  - Design a test harness that sweeps hybrid parameters across broad ranges and reports metrics to help tune defaults. Each sweep should:
+    - Run random search (`random_trials` ∈ {100, 200, 300, 500, 1000, 2000}) to see how exploration budget impacts the hybrid.
+    - Run Bayesian refinement (`bo_iterations` ∈ {10, 20, 40, 60, 80, 100, 200}) and track diminishing returns vs runtime.
+    - Vary warm-start size (`warm_start_k` from 1 to 50 in steps of 5, plus edge cases 1 and 50) to examine diversity vs convergence.
+    - Compare acquisition functions (`acq_func` ∈ {"EI", "PI", "LCB"}) to see which balances exploration/exploitation best.
+    - Evaluate across seeds {13, 42, 77} for reproducibility.
+  - For each configuration, record: best score, worst score, mean score, standard deviation, and mean runtime; summarise in `experiments/hybrid_sweep/summary.json`.
+  - Validation: [x] `src/rbm/hybrid_sweep.py::run_hybrid_sweep` generates the summary; `tests/rbm/test_hybrid_sweep.py` exercises the sweep harness with mocked calibrations. Provide an executable driver (e.g., `scripts/run_hybrid_sweep.py`) so long-running sweeps can be launched outside the interactive session.
 
 ### 7) Document how to run it and what we learned
 - **Goal**: Capture how to run, compare, and explain the new optimizer for the essay.
