@@ -135,11 +135,18 @@ def _objective_factory(
         import tempfile
 
         cfg = load_config(config_path)
+        cand_params = json.loads(json.dumps(cand))
+        cand_init = asdict(cfg.init)
+        if "init" in cand_params:
+            init_overrides = cand_params.pop("init")
+            for name, value in init_overrides.items():
+                cand_init[name] = value
+
         temp = {
             "time": {"start": cfg.time.start, "end": cfg.time.end},
             "inputs": {"hunt": cfg.inputs.hunt, "ctrl": cfg.inputs.ctrl},
-            "params": cand,
-            "init": asdict(cfg.init),
+            "params": cand_params,
+            "init": cand_init,
             "seeds": asdict(cfg.seeds),
         }
         fd, tmp_cfg = tempfile.mkstemp(suffix=".json")
@@ -246,6 +253,7 @@ def calibrate_bayes_opt(
 
     space = _SearchSpace(param_ranges)
     base_params = asdict(cfg.params)
+    base_params["init"] = asdict(cfg.init)
     objective, trials, progress = _objective_factory(
         config_path,
         base_params,
@@ -272,6 +280,11 @@ def calibrate_bayes_opt(
 
     best_params = space.list_to_dict(result.x, base_params)
     best_score = float(result.fun)
+
+    init_full = asdict(cfg.init)
+    if "init" in best_params:
+        init_full.update(best_params["init"])
+    best_params["init"] = init_full
 
     if out_dir:
         os.makedirs(out_dir, exist_ok=True)

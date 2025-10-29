@@ -11,7 +11,8 @@
     "vegetation": { "vegRate": [0.01, 0.6], "capMax": [80000, 400000], "browse": [0.0, 0.6] },
     "deer": { "birth": [0.5, 1.4], "surv": [0.5, 0.98] },
     "predation": { "predAtk": [5e-7, 5e-3], "predCap": [0.05, 0.9], "predEff": [5e-5, 1e-2] },
-    "predators": { "mort": [0.03, 0.5] }
+    "predators": { "mort": [0.03, 0.5] },
+    "init": { "pred": [50, 800] }
   },
   "init": { "deer": 30000, "pred": 200, "carry": 30000 },
   "seeds": { "main": 42 }

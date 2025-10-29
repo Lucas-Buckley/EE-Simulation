@@ -200,6 +200,7 @@ def calibrate_random_search(
     """
     cfg = load_config(config_path)
     base_params_dict = _deepcopy_params(cfg.params)
+    base_params_dict["init"] = asdict(cfg.init)
     rng = random.Random(seed)
 
     best_score = float("inf")
@@ -225,16 +226,22 @@ def calibrate_random_search(
     for t in range(trials):
         cand = _sample_candidate(param_ranges, rng)
         cand_params = _apply_candidate(base_params_dict, cand)
-        # Build a temp config dict to pass to runner by writing to a temp file is heavy; instead override after load
-        # Use run_years with a monkey-patched params via asdict structure consumed inside run_years → it calls load_config
-        # To avoid re-writing config, we re-run run_years on a temporary copy: write a sidecar JSON? Keep simple: write temp file.
+
+        cand_full = json.loads(json.dumps(cand_params))
+        cand_params_only = json.loads(json.dumps(cand_params))
+        cand_init = asdict(cfg.init)
+        if "init" in cand_params_only:
+            init_overrides = cand_params_only.pop("init")
+            for name, value in init_overrides.items():
+                cand_init[name] = value
+
         import tempfile
         data = {
             "time": {"start": cfg.time.start, "end": cfg.time.end},
             "inputsCsv": getattr(cfg, "inputsCsv", None),
             "inputs": {"hunt": cfg.inputs.hunt, "ctrl": cfg.inputs.ctrl},
-            "params": cand_params,
-            "init": asdict(cfg.init),
+            "params": cand_params_only,
+            "init": cand_init,
             "seeds": asdict(cfg.seeds),
         }
         # Remove None keys
@@ -278,7 +285,7 @@ def calibrate_random_search(
         trial_rows.append(trial_row)
         if s < best_score:
             best_score = s
-            best_params = cand_params
+            best_params = cand_full
             # When a new best score is found, capture that trial's metric values
             best_peak_timing = peak_time_err
             best_peak_height = peak_ht_err
