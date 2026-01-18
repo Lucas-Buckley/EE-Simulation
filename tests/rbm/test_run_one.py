@@ -14,7 +14,7 @@ class TestRunOne(unittest.TestCase):
             "inputs": {"hunt": [0], "ctrl": [0]},
             "params": {
                 "vegetation": {"vegRate": 0.15, "capMax": 100000, "browse": 0.0},
-                "deer": {"birth": 1.0, "surv": 0.85},
+                "deer": {"birth": 1.0, "mort": 0.15},
                 "predation": {"predAtk": 0.0, "predCap": 0.0, "predEff": 0.0},
                 "predators": {"mort": 0.0},
             },

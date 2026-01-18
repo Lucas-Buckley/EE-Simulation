@@ -13,7 +13,7 @@ class TestRunYears(unittest.TestCase):
             "inputs": {"hunt": [0, 0, 0], "ctrl": [0, 0, 0]},
             "params": {
                 "vegetation": {"vegRate": 0.10, "capMax": 1000.0, "browse": 0.0},
-                "deer": {"birth": 1.0, "surv": 0.9},
+                "deer": {"birth": 1.0, "mort": 0.1},
                 "predation": {"predAtk": 0.0, "predCap": 0.0, "predEff": 0.0},
                 "predators": {"mort": 0.0},
             },

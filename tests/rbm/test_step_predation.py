@@ -10,7 +10,7 @@ class TestStepPredation(unittest.TestCase):
         inp = Inputs(hunt=0.0, ctrl=0.0)
         params = {
             "vegetation": {"vegRate": 0.0, "capMax": 100000.0, "browse": 0.0, "winPen": 0.0},
-            "deer": {"birth": 0.0, "surv": 1.0, "wDeer": 0.0},
+            "deer": {"birth": 0.0, "mort": 0.0, "wDeer": 0.0},
             "predation": {"predAtk": 0.001, "predCap": 0.9, "predEff": 0.001},
         }
         _, d1 = step(s, inp, params)
@@ -23,7 +23,7 @@ class TestStepPredation(unittest.TestCase):
         inp = Inputs(hunt=0.0, ctrl=0.0)
         params = {
             "vegetation": {"vegRate": 0.0, "capMax": 100000.0, "browse": 0.0, "winPen": 0.0},
-            "deer": {"birth": 0.0, "surv": 1.0, "wDeer": 0.0},
+            "deer": {"birth": 0.0, "mort": 0.0, "wDeer": 0.0},
             "predation": {"predAtk": 1.0, "predCap": 0.3, "predEff": 0.001},
         }
         _, d = step(s, inp, params)

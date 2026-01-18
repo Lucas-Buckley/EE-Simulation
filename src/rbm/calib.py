@@ -9,7 +9,6 @@ import time
 from dataclasses import asdict
 from typing import Dict, Any, Tuple, List, Union
 
-from .bayes_optimize import calibrate_bayes_opt
 from .config import load_config
 from .run_years import run_years
 from .metrics import (
@@ -396,6 +395,8 @@ def calibrate_compare_interpolation(
 
 def main_bayes_opt() -> None:
     """Command-line entry point for Bayesian optimization calibration."""
+
+    from .bayes_optimize import calibrate_bayes_opt
 
     parser = argparse.ArgumentParser(description="Bayesian optimization calibration helper")
     repo_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))

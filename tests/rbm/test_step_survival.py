@@ -10,7 +10,7 @@ class TestStepSurvival(unittest.TestCase):
         s_high = State(deer=100.0, pred=0.0, carry=200.0) # high food
         p = {
             "vegetation": {"vegRate": 0.0, "capMax": 1000.0, "browse": 0.0},
-            "deer": {"birth": 0.0, "surv": 0.8},
+            "deer": {"birth": 0.0, "mort": 0.2},
         }
         inp = Inputs(hunt=0.0, ctrl=0.0)
         _, d_low = step(s_low, inp, p)
@@ -21,7 +21,7 @@ class TestStepSurvival(unittest.TestCase):
         s = State(deer=100.0, pred=0.0, carry=0.0)  # food -> 0
         p = {
             "vegetation": {"vegRate": 0.0, "capMax": 1000.0, "browse": 0.0},
-            "deer": {"birth": 0.0, "surv": 0.8},
+            "deer": {"birth": 0.0, "mort": 0.2},
         }
         inp = Inputs(hunt=0.0, ctrl=0.0)
         _, d = step(s, inp, p)

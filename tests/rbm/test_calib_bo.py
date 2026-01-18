@@ -15,7 +15,7 @@ def _build_temp_config() -> str:
         "inputs": {"hunt": [0.0], "ctrl": [0.0]},
         "params": {
             "vegetation": {"vegRate": 0.0, "capMax": 1.0, "browse": 0.0},
-            "deer": {"birth": 0.5, "surv": 0.5},
+            "deer": {"birth": 0.5, "mort": 0.5},
             "predation": {"predAtk": 0.0, "predCap": 0.0, "predEff": 0.0},
             "predators": {"mort": 0.0},
         },

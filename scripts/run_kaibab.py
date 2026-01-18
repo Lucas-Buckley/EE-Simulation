@@ -70,13 +70,7 @@ def run_calibration(
     hybrid_bo_iterations: int,
     hybrid_warm_k: int,
 ):
-    from src.rbm.calib import (
-        calibrate_random_search,
-        calibrate_compare_interpolation,
-        load_param_ranges,
-    )
-    from src.rbm.bayes_optimize import calibrate_bayes_opt
-    from src.rbm.hybrid import calibrate_hybrid
+    from src.rbm.calib import load_param_ranges
 
     ranges = load_param_ranges(cfg_path)
     label = optimizer
@@ -85,6 +79,8 @@ def run_calibration(
     if compare:
         if optimizer != "random":
             raise ValueError("Calibration compare currently supports only the random search optimizer")
+        from src.rbm.calib import calibrate_compare_interpolation
+
         res = calibrate_compare_interpolation(
             cfg_path,
             param_ranges=ranges,
@@ -100,6 +96,8 @@ def run_calibration(
 
         start = time.time()
         if optimizer == "bayes":
+            from src.rbm.bayes_optimize import calibrate_bayes_opt
+
             best_params, best_score = calibrate_bayes_opt(
                 config_path=cfg_path,
                 observed_years=None,
@@ -113,6 +111,8 @@ def run_calibration(
                 acq_func=acq_func,
             )
         elif optimizer == "hybrid":
+            from src.rbm.hybrid import calibrate_hybrid
+
             best_params, best_score, stage_info = calibrate_hybrid(
                 config_path=cfg_path,
                 param_ranges=ranges,
@@ -128,6 +128,8 @@ def run_calibration(
                 acq_func=acq_func,
             )
         else:
+            from src.rbm.calib import calibrate_random_search
+
             best_params, best_score = calibrate_random_search(
                 cfg_path,
                 observed_years=None,

@@ -10,7 +10,7 @@ class TestStepHunt(unittest.TestCase):
         inp = Inputs(hunt=0.0, ctrl=0.0)
         params = {
             "vegetation": {"vegRate": 0.0, "capMax": 1000.0, "browse": 0.0, "winPen": 0.0},
-            "deer": {"birth": 0.0, "surv": 1.0, "wDeer": 0.0},
+            "deer": {"birth": 0.0, "mort": 0.0, "wDeer": 0.0},
             "predation": {"predAtk": 0.0, "predCap": 0.0, "predEff": 0.0},
         }
         _, d = step(s, inp, params)
@@ -21,7 +21,7 @@ class TestStepHunt(unittest.TestCase):
         inp = Inputs(hunt=10.0, ctrl=0.0)  # invalid high, should clamp to 1.0
         params = {
             "vegetation": {"vegRate": 0.0, "capMax": 1000.0, "browse": 0.0, "winPen": 0.0},
-            "deer": {"birth": 0.0, "surv": 1.0, "wDeer": 0.0},
+            "deer": {"birth": 0.0, "mort": 0.0, "wDeer": 0.0},
             "predation": {"predAtk": 0.0, "predCap": 0.0, "predEff": 0.0},
         }
         _, d = step(s, inp, params)
