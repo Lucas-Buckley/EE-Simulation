@@ -45,7 +45,7 @@ class TestConfig(unittest.TestCase):
 
     def test_inputs_length_validation(self):
         data = base_data()
-        data["inputs"]["hunt"] = [0, 0]  # wrong length
+        data["inputs"]["hunt"] = [0, 0]                
         path = write_tmp_config(data)
         try:
             with self.assertRaises(ValueError) as ctx:

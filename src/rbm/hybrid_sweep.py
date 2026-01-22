@@ -25,24 +25,6 @@ def run_hybrid_sweep(
     max_runs: int | None = None,
     progress_interval_sec: float = 5.0,
 ) -> Dict[str, any]:
-    """Sweep hybrid-optimiser settings and record metrics.
-
-    Inputs:
-      - config_path: simulation config file.
-      - param_ranges: calibration bounds shared with other optimisers.
-      - random_trials_options: iterable of random-search budgets to try.
-      - bo_iteration_options: iterable of Bayesian-optimisation evaluation counts.
-      - warm_start_options: warm-start sizes (integers) to test.
-      - acq_funcs: acquisition function names (`"EI"`, `"PI"`, `"LCB"`, ...).
-      - seeds: random seeds to evaluate for each combination.
-      - out_dir: destination directory for sweep artefacts and summary.
-      - observed_csv_path / interpolate_observed: control loading of observed data when arrays omitted.
-      - max_runs: optional cap on total evaluations (useful for quick smoke tests).
-
-    Output:
-      - summary dictionary containing per-run records and per-parameter aggregates; the same data
-        is written to `<out_dir>/summary.json` for downstream analysis.
-    """
 
     os.makedirs(out_dir, exist_ok=True)
 

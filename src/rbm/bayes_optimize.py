@@ -1,10 +1,3 @@
-"""Bayesian optimization helper for tuning the rule-based Kaibab simulator.
-
-This module provides a reusable calibration function that mirrors the
-`calibrate_random_search` helper but swaps in Bayesian optimization (BO)
-for smarter sampling. The BO backend is `skopt.gp_minimize`, which uses a
-Gaussian-process model to balance exploration and exploitation.
-"""
 
 from __future__ import annotations
 
@@ -33,15 +26,6 @@ ParamRanges = Dict[str, Dict[str, Tuple[float, float]]]
 
 
 class _SearchSpace:
-    """Represent the BO search space and convert between dicts and flat lists.
-
-    Inputs:
-      - ranges: nested dictionary of parameter bounds.
-
-    Outputs:
-      - Allows conversion from nested dict -> flat list and vice versa, while
-        keeping a stable ordering for the optimizer.
-    """
 
     def __init__(self, ranges: ParamRanges):
         self._order: List[Tuple[str, str]] = []
@@ -58,12 +42,10 @@ class _SearchSpace:
 
     @property
     def dimensions(self) -> List[Real]:
-        """Return skopt dimension objects defined on [0, 1] for each parameter."""
 
         return [Real(0.0, 1.0, name=f"{group}.{name}") for (group, name) in self._order]
 
     def dict_to_list(self, params: Dict[str, Dict[str, float]]) -> List[float]:
-        """Flatten parameters into 0–1 space matching the search order."""
 
         flat: List[float] = []
         for (group, name), (low, high) in zip(self._order, self._bounds):
@@ -75,7 +57,6 @@ class _SearchSpace:
         return flat
 
     def list_to_dict(self, values: Iterable[float], base: Dict[str, Dict[str, float]]) -> Dict[str, Dict[str, float]]:
-        """Inflate 0–1 values back into real parameter space based on a base template."""
 
         nested = json.loads(json.dumps(base))
         for (group, name), (low, high), value in zip(self._order, self._bounds, values):
@@ -85,7 +66,6 @@ class _SearchSpace:
 
 
 def _extract_deer_series(rows: List[Dict[str, Any]]) -> Tuple[List[int], List[float]]:
-    """Return (years, deer values) from run_years output rows."""
 
     years = [int(r["year"]) for r in rows]
     deer = [float(r.get("deerNxt", r.get("deer", 0.0))) for r in rows]
@@ -98,7 +78,6 @@ def _align_series(
     sim_years: List[int],
     sim_deer: List[float],
 ) -> Tuple[List[int], List[float], List[float]]:
-    """Align observed and simulated data on common years."""
 
     obs_map = {y: v for y, v in zip(observed_years, observed_deer)}
     sim_map = {y: v for y, v in zip(sim_years, sim_deer)}
@@ -117,7 +96,6 @@ def _objective_factory(
     out_dir: str | None,
     seed: int,
 ) -> Tuple[Any, List[Dict[str, Any]], List[Dict[str, Any]]]:
-    """Create the objective function for BO and containers for logging trials."""
 
     trials: List[Dict[str, Any]] = []
     progress: List[Dict[str, Any]] = []
@@ -131,7 +109,7 @@ def _objective_factory(
     def objective(flat_values: List[float]) -> float:
         nonlocal best_score
         cand = space.list_to_dict(flat_values, base_params)
-        # Build temporary config JSON similar to calibrate_random_search
+                                                                        
         import tempfile
 
         cfg = load_config(config_path)
@@ -223,19 +201,6 @@ def calibrate_bayes_opt(
     acq_func: str = "EI",
     warm_start: tuple[List[List[float]], List[float]] | None = None,
 ) -> Tuple[Dict[str, Any], float]:
-    """Tune model parameters with Bayesian optimization.
-
-    Inputs mirror `calibrate_random_search`:
-      - config_path / param_ranges / seed / out_dir: as in random search.
-      - observed_years / observed_deer or observed_csv_path / interpolate_observed: supply observed data.
-      - iterations: total Bayesian optimisation evaluations.
-      - acq_func: acquisition function name for `gp_minimize`.
-      - warm_start: optional `(x0, y0)` lists to seed the optimiser with existing trials (values in
-        normalised 0–1 space produced by `_SearchSpace`).
-
-    Output:
-      - `(best_params_dict, best_score_float)` describing the lowest error found.
-    """
 
     cfg = load_config(config_path)
     if observed_years is None or observed_deer is None:

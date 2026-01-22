@@ -34,7 +34,7 @@ class TestRunYears(unittest.TestCase):
             rows = run_years(cfg_path, csv_path)
             self.assertEqual(len(rows), 3)
             self.assertTrue(os.path.exists(csv_path))
-            # Each row should contain the 'year' field from 1905..1907
+                                                                      
             self.assertEqual([r["year"] for r in rows], [1905, 1906, 1907])
         finally:
             os.remove(cfg_path)

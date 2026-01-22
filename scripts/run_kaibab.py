@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+                      
 from __future__ import annotations
 
 import argparse
@@ -17,7 +17,7 @@ def _ensure_path():
     root = _project_root()
     if root not in sys.path:
         sys.path.insert(0, root)
-    # Ensure user site-packages (where pip --user installs go) is importable
+                                                                            
     user_site = site.getusersitepackages()
     if isinstance(user_site, str):
         user_paths = [user_site]
@@ -29,7 +29,6 @@ def _ensure_path():
 
 
 def _prepare_output(path: str, *, is_dir: bool) -> None:
-    """Remove any previous output and make sure directories exist."""
 
     if os.path.exists(path):
         if is_dir:

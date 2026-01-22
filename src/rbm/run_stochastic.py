@@ -13,17 +13,6 @@ from .step import step
 
 
 def _percentile(vals: List[float], p: float) -> float:
-    """Compute the p-th percentile of a list using linear interpolation on sorted values.
-
-    Inputs:
-      - vals: list of numbers to summarize
-      - p: percentile to compute in the range [0, 100]
-    Output:
-      - the value at percentile p (e.g., p=10 gives the 10th percentile). If vals is empty, returns NaN.
-
-    Method: sort the values, find fractional index k = (n-1) * (p/100), and linearly interpolate
-    between the floor and ceil neighbors (common definition used by NumPy/Excel variants).
-    """
     if not vals:
         return math.nan
     xs = sorted(vals)
@@ -42,22 +31,9 @@ def _percentile(vals: List[float], p: float) -> float:
 
 
 def _apply_noise(value: float, rng: random.Random, rel_sd: float, low: float | None = None) -> float:
-    """Jitter a parameter by a small relative amount to simulate uncertainty.
-
-    Inputs:
-      - value: the original (positive) parameter value
-      - rng: a random.Random instance for reproducibility
-      - rel_sd: relative standard deviation (e.g., 0.05 ≈ 5% typical variation)
-      - low: optional lower bound; if provided, result is clamped to be >= low
-    Output:
-      - a perturbed value close to the original. If rel_sd <= 0, returns value unchanged.
-
-    Implementation: draws a normal deviate with mean 0 and std rel_sd, then scales value by (1 + noise).
-    This approximates multiplicative/log-normal noise while remaining simple.
-    """
     if rel_sd <= 0:
         return value
-    # Draw normal(0, rel_sd) and exponentiate approximates log-normal for positivity
+                                                                                    
     noise = rng.normalvariate(0.0, rel_sd)
     v = value * (1.0 + noise)
     if low is not None:
@@ -72,24 +48,11 @@ def run_years_stochastic(
     seed: int = 42,
     rel_sd: Dict[str, float] | None = None,
 ) -> List[Dict[str, Any]]:
-    """Run the simulation many times with small random jitters to produce mean and bands.
-
-    Inputs:
-      - config_path: path to the config file
-      - out_csv_path: CSV to write per-year aggregates
-      - repeats: number of Monte Carlo repeats
-      - seed: base RNG seed (deterministic results)
-      - rel_sd: relative standard deviations per parameter group name within params dict
-        Example: {"vegetation.vegRate": 0.05, "deer.birth": 0.05, "deer.surv": 0.02,
-                  "predation.predAtk": 0.05, "predators.mort": 0.02}
-
-    Output: list of rows with per-year aggregates (mean, p10, p90) for deer and pred.
-    """
     cfg = load_config(config_path)
     base_params = asdict(cfg.params)
     years = list(range(cfg.time.start, cfg.time.end + 1))
 
-    # Defaults if rel_sd not given
+                                  
     if rel_sd is None:
         rel_sd = {
             "vegetation.vegRate": 0.05,
@@ -99,22 +62,22 @@ def run_years_stochastic(
             "predators.mort": 0.02,
         }
 
-    # Storage per year across repeats
+                                     
     deer_by_year: Dict[int, List[float]] = {y: [] for y in years}
     pred_by_year: Dict[int, List[float]] = {y: [] for y in years}
 
     rng = random.Random(seed)
 
     for r in range(repeats):
-        # Jitter a copy of parameters for this repeat
+                                                     
         params = asdict(cfg.params)
-        # Apply noise per specified paths
+                                         
         for path, sd in rel_sd.items():
             group, name = path.split(".")
             if group in params and name in params[group]:
                 params[group][name] = _apply_noise(float(params[group][name]), rng, sd, low=0.0)
 
-        # Run deterministic years with these jittered params
+                                                            
         state = State(deer=cfg.init.deer, pred=cfg.init.pred, carry=cfg.init.carry)
         for i, y in enumerate(years):
             inputs = Inputs(hunt=cfg.inputs.hunt[i], ctrl=cfg.inputs.ctrl[i])
@@ -123,7 +86,7 @@ def run_years_stochastic(
             pred_by_year[y].append(next_state.pred)
             state = next_state
 
-    # Aggregate
+               
     rows: List[Dict[str, Any]] = []
     for y in years:
         dvals = deer_by_year[y]
@@ -139,7 +102,7 @@ def run_years_stochastic(
         }
         rows.append(row)
 
-    # Write CSV
+               
     os.makedirs(os.path.dirname(out_csv_path) or ".", exist_ok=True)
     with open(out_csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(

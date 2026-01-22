@@ -29,17 +29,9 @@ OUTPUT_FIELDS = [
 
 
 def run_once(config_path: str, out_csv_path: str) -> Dict[str, Any]:
-    """Run a single simulation year and write one row to CSV.
-
-    Inputs:
-      - config_path: path to the config file (provides initial state, parameters, inputs)
-      - out_csv_path: where to write the single-row CSV output
-    Output:
-      - a dict containing the written CSV row (year and diagnostics)
-    """
     cfg = load_config(config_path)
 
-    # Initialize state and inputs for the first year
+                                                    
     year = cfg.time.start
     idx = 0
     state = State(deer=cfg.init.deer, pred=cfg.init.pred, carry=cfg.init.carry)
@@ -76,7 +68,7 @@ def run_once(config_path: str, out_csv_path: str) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # Default: read configs/base.yaml and write experiments/run_one.csv
+                                                                       
     base_cfg = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "configs", "base.yaml")
     out_csv = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "experiments", "run_one.csv")
     base_cfg = os.path.abspath(base_cfg)

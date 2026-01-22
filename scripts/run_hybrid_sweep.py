@@ -1,5 +1,4 @@
-#!/usr/bin/env python3
-"""Run the full hybrid parameter sweep and store results under experiments/hybrid_sweep_full."""
+                      
 
 from __future__ import annotations
 

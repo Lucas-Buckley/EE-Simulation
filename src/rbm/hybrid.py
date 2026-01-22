@@ -23,26 +23,6 @@ def calibrate_hybrid(
     interpolate_observed: bool = True,
     acq_func: str = "EI",
 ) -> Tuple[Dict[str, Dict[str, float]], float, Dict[str, Dict[str, float]]]:
-    """Run random search first, then refine the best results with Bayesian optimization.
-
-    Inputs:
-      - config_path: location of the JSON config describing initial state, inputs, and parameters.
-      - param_ranges: nested dict of parameter bounds `{group: {name: (low, high)}}`.
-      - random_trials: number of random-search samples to evaluate in phase one.
-      - bo_iterations: number of Bayesian optimisation evaluations in phase two (minimum warm-start count).
-      - warm_start_k: number of top random-search trials to seed the Bayesian optimiser.
-      - seed: shared random seed for reproducibility.
-      - out_dir: optional base directory for artefacts (`random/` and `bayes/` subfolders are created here).
-      - observed_years / observed_deer: optional pre-loaded observed data; if omitted we load the CSV.
-      - observed_csv_path: override path to observed data when arrays are not supplied.
-      - interpolate_observed: whether to interpolate missing observed points when loading from CSV.
-      - acq_func: acquisition function string passed to `gp_minimize`.
-
-    Output:
-      - (best_params, best_score, stage_logs) where `best_params` is the winning parameter dictionary,
-        `best_score` is the lowest error achieved, and `stage_logs` summarises timings/paths for the
-        random-search and Bayesian refinement stages.
-    """
 
     base_out = out_dir or os.path.join(
         os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")),

@@ -16,7 +16,7 @@ class TestStepPredation(unittest.TestCase):
         _, d1 = step(s, inp, params)
         s2 = State(deer=1000.0, pred=20.0, carry=1000.0)
         _, d2 = step(s2, inp, params)
-        self.assertGreater(d2["kill"], d1["kill"])  # more predators -> more kills
+        self.assertGreater(d2["kill"], d1["kill"])                                
 
     def test_kill_is_capped(self):
         s = State(deer=1000.0, pred=1e9, carry=1000.0)

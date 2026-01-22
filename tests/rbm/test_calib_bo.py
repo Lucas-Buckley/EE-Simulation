@@ -60,8 +60,8 @@ class TestCalibrationComparison(unittest.TestCase):
             original_run_years_bayes = bayes_optimize.run_years
             original_run_years_calib = calib_module.run_years
             try:
-                bayes_optimize.run_years = stub  # type: ignore[attr-defined]
-                calib_module.run_years = stub  # type: ignore
+                bayes_optimize.run_years = stub                              
+                calib_module.run_years = stub                
 
                 seeds = [0, 1]
                 tolerance = 5e-3
@@ -95,8 +95,8 @@ class TestCalibrationComparison(unittest.TestCase):
                         self.assertLessEqual(bo_score, rs_score + tolerance)
                         self.assertLessEqual(abs(bo_params["deer"]["birth"] - observed_deer[0]), 0.05)
             finally:
-                bayes_optimize.run_years = original_run_years_bayes  # type: ignore[attr-defined]
-                calib_module.run_years = original_run_years_calib  # type: ignore
+                bayes_optimize.run_years = original_run_years_bayes                              
+                calib_module.run_years = original_run_years_calib                
         finally:
             os.remove(config_path)
 
