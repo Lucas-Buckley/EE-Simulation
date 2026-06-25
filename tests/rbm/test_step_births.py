@@ -6,7 +6,7 @@ from src.rbm.step import step
 
 class TestStepBirths(unittest.TestCase):
     def test_births_scale_with_food(self):
-        s = State(deer=100.0, pred=0.0, carry=50.0)                               
+        s = State(deer=100.0, pred=0.0, carry=50.0)  # food=0.5 if carry unchanged
         inp = Inputs(hunt=0.0, ctrl=0.0)
         params = {
             "vegetation": {"vegRate": 0.0, "capMax": 1000.0, "browse": 0.0, "winPen": 0.0},

@@ -18,7 +18,7 @@ class TestStepHunt(unittest.TestCase):
 
     def test_hunt_rate_is_clamped(self):
         s = State(deer=100.0, pred=0.0, carry=100.0)
-        inp = Inputs(hunt=10.0, ctrl=0.0)                                     
+        inp = Inputs(hunt=10.0, ctrl=0.0)  # invalid high, should clamp to 1.0
         params = {
             "vegetation": {"vegRate": 0.0, "capMax": 1000.0, "browse": 0.0, "winPen": 0.0},
             "deer": {"birth": 0.0, "mort": 0.0, "wDeer": 0.0},

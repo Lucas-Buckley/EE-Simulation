@@ -6,8 +6,8 @@ from src.rbm.step import step
 
 class TestStepSurvival(unittest.TestCase):
     def test_survival_increases_with_food(self):
-        s_low = State(deer=100.0, pred=0.0, carry=10.0)             
-        s_high = State(deer=100.0, pred=0.0, carry=200.0)            
+        s_low = State(deer=100.0, pred=0.0, carry=10.0)   # low food
+        s_high = State(deer=100.0, pred=0.0, carry=200.0) # high food
         p = {
             "vegetation": {"vegRate": 0.0, "capMax": 1000.0, "browse": 0.0},
             "deer": {"birth": 0.0, "mort": 0.2},
@@ -18,7 +18,7 @@ class TestStepSurvival(unittest.TestCase):
         assert d_low["survNat"] <= d_high["survNat"]
 
     def test_survival_fraction_bounds(self):
-        s = State(deer=100.0, pred=0.0, carry=0.0)             
+        s = State(deer=100.0, pred=0.0, carry=0.0)  # food -> 0
         p = {
             "vegetation": {"vegRate": 0.0, "capMax": 1000.0, "browse": 0.0},
             "deer": {"birth": 0.0, "mort": 0.2},

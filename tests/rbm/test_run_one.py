@@ -8,7 +8,7 @@ from src.rbm.run_one import run_once
 
 class TestRunOne(unittest.TestCase):
     def test_run_once_writes_csv(self):
-                                     
+        # Minimal config for one year
         data = {
             "time": {"start": 1905, "end": 1905},
             "inputs": {"hunt": [0], "ctrl": [0]},
@@ -29,7 +29,7 @@ class TestRunOne(unittest.TestCase):
 
         fd_csv, csv_path = tempfile.mkstemp(suffix=".csv")
         os.close(fd_csv)
-        os.remove(csv_path)                                 
+        os.remove(csv_path)  # we want run_once to create it
 
         try:
             row = run_once(cfg_path, csv_path)

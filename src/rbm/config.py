@@ -74,18 +74,32 @@ class Config:
 
 
 def _require_keys(obj: Dict[str, Any], keys: List[str], ctx: str) -> None:
+    """Ensure a dictionary has all required keys, otherwise raise a helpful error.
+
+    Inputs:
+      - obj: the dictionary being validated (e.g., a section of the loaded config)
+      - keys: list of required key names
+      - ctx: short label for where we are (used to clarify the error message)
+    Output:
+      - None, but raises ValueError if a key is missing.
+    """
     for k in keys:
         if k not in obj:
             raise ValueError(f"Missing key '{k}' in {ctx}")
 
 
 def _load_inputs_csv(path: str) -> Dict[str, Any]:
+    """Read a CSV file of inputs and return years and per-year rates.
+
+    Expected CSV headers: "Year", "% Deer Hunted", "% Predators Killed"
+    Returns a dict: {"years": [...], "hunt": [...], "ctrl": [...]} with values aligned by year.
+    """
     years: List[int] = []
     hunt: List[float] = []
     ctrl: List[float] = []
     with open(path, "r", encoding="utf-8") as f:
         reader = csv.DictReader(f)
-                                                                   
+        # Expected headers: Year, % Deer Hunted, % Predators Killed
         for row in reader:
             year = int(row.get("Year"))
             hunt_val = float(row.get("% Deer Hunted"))
@@ -93,7 +107,7 @@ def _load_inputs_csv(path: str) -> Dict[str, Any]:
             years.append(year)
             hunt.append(hunt_val)
             ctrl.append(ctrl_val)
-                                             
+    # Sort by year in case file isn't ordered
     sorted_triplets = sorted(zip(years, hunt, ctrl), key=lambda t: t[0])
     years = [t[0] for t in sorted_triplets]
     hunt = [t[1] for t in sorted_triplets]
@@ -102,14 +116,19 @@ def _load_inputs_csv(path: str) -> Dict[str, Any]:
 
 
 def load_config(path: str) -> Config:
+    """Load a simulation config from JSON/YAML and construct a typed Config object.
+
+    - Supports inputs provided as arrays (inputs.hunt/inputs.ctrl) or via an external CSV (inputsCsv).
+    - If a CSV is provided, the simulation year range is overridden to match the CSV years.
+    """
     if not os.path.exists(path):
         raise FileNotFoundError(path)
     with open(path, "r", encoding="utf-8") as f:
-                                                      
+        # Accept JSON-as-YAML for simplicity initially
         raw = json.load(f)
 
     _require_keys(raw, ["time", "params", "init", "seeds"], "root")
-                                                       
+    # inputs may be provided or overridden by inputsCsv
 
     time = raw["time"]
     _require_keys(time, ["start", "end"], "time")
@@ -117,18 +136,18 @@ def load_config(path: str) -> Config:
     if time_cfg.end < time_cfg.start:
         raise ValueError("time.end must be >= time.start")
 
-                                         
+    # Determine inputs from arrays or CSV
     inputs_cfg: InputsCfg
     if "inputsCsv" in raw or ("inputs" in raw and isinstance(raw["inputs"], dict) and "csv" in raw["inputs"]):
         csv_path = raw.get("inputsCsv") or raw["inputs"]["csv"]
-                                                
+        # Allow relative paths from project root
         if not os.path.isabs(csv_path):
             base_dir = os.path.dirname(os.path.abspath(path))
             csv_path = os.path.abspath(os.path.join(base_dir, os.pardir, csv_path) if csv_path.startswith("data/") else os.path.join(base_dir, csv_path))
         loaded = _load_inputs_csv(csv_path)
         years = loaded["years"]
         inputs_cfg = InputsCfg(hunt=[float(x) for x in loaded["hunt"]], ctrl=[float(x) for x in loaded["ctrl"]])
-                                      
+        # Override time range from CSV
         time_cfg = TimeCfg(start=min(years), end=max(years))
     else:
         inputs = raw["inputs"]

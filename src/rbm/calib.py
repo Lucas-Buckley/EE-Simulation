@@ -22,7 +22,7 @@ from .observed import load_deer_observed_csv
 
 ParamRanges = Dict[str, Dict[str, Tuple[float, float]]]
 
-                                                                                 
+# Default parameter ranges used when the config file does not define calibRanges.
 DEFAULT_PARAM_RANGES: ParamRanges = {
     "vegetation": {"vegRate": (0.01, 0.6), "capMax": (80_000.0, 400_000.0), "browse": (0.0, 0.6)},
     "deer": {"birth": (0.5, 1.4), "surv": (0.5, 0.98)},
@@ -32,6 +32,7 @@ DEFAULT_PARAM_RANGES: ParamRanges = {
 
 
 def _copy_ranges(ranges: ParamRanges) -> ParamRanges:
+    """Return a fresh copy of parameter bounds so callers can mutate safely."""
 
     return {
         group: {name: (float(bounds[0]), float(bounds[1])) for name, bounds in subgroup.items()}
@@ -40,6 +41,15 @@ def _copy_ranges(ranges: ParamRanges) -> ParamRanges:
 
 
 def load_param_ranges(config_path: str, fallback: ParamRanges | None = None) -> ParamRanges:
+    """Load calibration ranges from config.calibRanges or fall back to defaults.
+
+    Inputs:
+      - config_path: path to the JSON config file.
+      - fallback: optional dictionary to use when calibRanges is missing.
+
+    Output:
+      - Nested dictionary mapping group and parameter name to (low, high) tuples.
+    """
 
     base = _copy_ranges(fallback or DEFAULT_PARAM_RANGES)
     try:
@@ -72,10 +82,37 @@ def load_param_ranges(config_path: str, fallback: ParamRanges | None = None) -> 
 
 
 def _deepcopy_params(params: Any) -> Any:
+    """Return a deep-copied plain dict version of params (dataclass or dict).
+
+    Ensures we can mutate candidate parameter sets without affecting the original.
+    """
     return json.loads(json.dumps(asdict(params))) if not isinstance(params, dict) else json.loads(json.dumps(params))
 
 
 def _apply_candidate(params_dict: Dict[str, Any], candidate: Dict[str, Dict[str, float]]) -> Dict[str, Any]:
+    """Return a copy of params with selected values replaced from a candidate.
+
+    Inputs:
+      - params_dict: a nested "parameters" dictionary shaped like this:
+            {
+              "vegetation": {"vegRate": 0.15, "capMax": 100000, "browse": 0.1},
+              "deer": {"birth": 1.0, "surv": 0.85},
+              "predation": {"predAtk": 0.0001, "predCap": 0.3, "predEff": 0.0015},
+              "predators": {"mort": 0.12}
+            }
+        You can think of the first layer keys ("vegetation", "deer", ...) as parameter groups, and the
+        inner keys (e.g., "vegRate", "birth") as individual parameter names within those groups.
+
+      - candidate: a nested dictionary describing which parameters to change and to what values. For example:
+            {
+              "vegetation": {"vegRate": 0.18, "capMax": 120000},
+              "deer": {"surv": 0.9}
+            }
+        This means: set vegetation.vegRate to 0.18, vegetation.capMax to 120000, and deer.surv to 0.9.
+
+    Output:
+      - a new parameters dictionary with those overrides applied, leaving all others unchanged.
+    """
     newp = json.loads(json.dumps(params_dict))
     for group, kv in candidate.items():
         if group not in newp:
@@ -86,6 +123,19 @@ def _apply_candidate(params_dict: Dict[str, Any], candidate: Dict[str, Dict[str,
 
 
 def _sample_candidate(ranges: ParamRanges, rng: random.Random) -> Dict[str, Dict[str, float]]:
+    """Create one random parameter set inside provided ranges.
+
+    Input:
+      - ranges: a nested dictionary describing uniform sampling ranges for parameters, e.g.:
+            {
+              "vegetation": {"vegRate": (0.05, 0.2), "capMax": (80000, 150000)},
+              "deer": {"birth": (0.6, 1.2), "surv": (0.6, 0.95)}
+            }
+      - rng: a random.Random instance used for reproducibility.
+
+    Output:
+      - a nested dictionary with sampled numeric values in the same shape as ranges.
+    """
     cand: Dict[str, Dict[str, float]] = {}
     for group, kv in ranges.items():
         cand[group] = {}
@@ -95,13 +145,19 @@ def _sample_candidate(ranges: ParamRanges, rng: random.Random) -> Dict[str, Dict
 
 
 def _extract_deer_series(rows: List[Dict[str, Any]]) -> Tuple[List[int], List[float]]:
+    """Extract (years, deer) from run_years output rows using deerNxt where available."""
     years = [int(r["year"]) for r in rows]
     deer = [float(r.get("deerNxt", r.get("deer", 0.0))) for r in rows]
     return years, deer
 
 
 def score_fit(observed_years: List[int], observed_deer: List[float], sim_years: List[int], sim_deer: List[float]) -> float:
-                                               
+    """Compute a single numerical score (lower is better) comparing simulated vs. observed deer.
+
+    We first align by common years to make sure both lists refer to the same timestamps, then compute
+    the scaled mean squared error so scores are comparable even if magnitudes differ.
+    """
+    # Align by intersection of years to be safe
     year_to_obs = {y: v for y, v in zip(observed_years, observed_deer)}
     year_to_sim = {y: v for y, v in zip(sim_years, sim_deer)}
     years = sorted(set(year_to_obs.keys()) & set(year_to_sim.keys()))
@@ -125,6 +181,22 @@ def calibrate_random_search(
     Tuple[Dict[str, Any], float],
     Tuple[Dict[str, Any], float, List[Dict[str, Any]]],
 ]:
+    """Tune model parameters by trying random values within user-provided ranges.
+
+    Inputs:
+      - config_path: path to a config file to run the simulation (we reuse its inputs and initial state)
+      - observed_years/observed_deer: real-world series to fit against
+      - param_ranges: which parameters to vary and the min/max for each (see _sample_candidate docstring)
+      - trials: how many random samples to evaluate
+      - seed: random seed for reproducibility
+      - out_dir: optional directory to save a JSON file of all trial results and the best parameters
+      - observed_csv_path / interpolate_observed: control loading of observed data when arrays omitted
+      - return_trials: when True, also return the list of per-trial dictionaries for downstream use
+
+    Output:
+      - `(best_params, best_score)` by default, or `(best_params, best_score, trial_rows)` when
+        `return_trials` is True.
+    """
     cfg = load_config(config_path)
     base_params_dict = _deepcopy_params(cfg.params)
     base_params_dict["init"] = asdict(cfg.init)
@@ -134,12 +206,12 @@ def calibrate_random_search(
     best_params: Dict[str, Any] = base_params_dict
     trial_rows: List[Dict[str, Any]] = []
     best_progress: List[Dict[str, Any]] = []
-                                                           
+    # Track best-so-far for other metrics (lower is better)
     best_peak_timing = float("inf")
     best_peak_height = float("inf")
     best_crash_ratio = float("inf")
 
-                                                                                                    
+    # Load observed data from CSV if not provided as arrays. Default to project data/kaibab_deer.csv
     if observed_years is None or observed_deer is None:
         if not observed_csv_path:
             project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
@@ -171,7 +243,7 @@ def calibrate_random_search(
             "init": cand_init,
             "seeds": asdict(cfg.seeds),
         }
-                          
+        # Remove None keys
         if data["inputsCsv"] is None:
             data.pop("inputsCsv")
         fd, tmp_cfg = tempfile.mkstemp(suffix=".json")
@@ -187,7 +259,7 @@ def calibrate_random_search(
                 pass
 
         sim_years, sim_deer = _extract_deer_series(rows)
-                                                                       
+        # Align series by intersecting years for fair metric comparison
         obs_map = {y: v for y, v in zip(observed_years, observed_deer)}
         sim_map = {y: v for y, v in zip(sim_years, sim_deer)}
         years_common = sorted(set(obs_map.keys()) & set(sim_map.keys()))
@@ -213,7 +285,7 @@ def calibrate_random_search(
         if s < best_score:
             best_score = s
             best_params = cand_full
-                                                                                
+            # When a new best score is found, capture that trial's metric values
             best_peak_timing = peak_time_err
             best_peak_height = peak_ht_err
             best_crash_ratio = crash_ratio_err
@@ -236,8 +308,8 @@ def calibrate_random_search(
             json.dump(trial_rows, f, indent=2)
         with open(os.path.join(out_dir, f"best_params_{ts}.json"), "w", encoding="utf-8") as f:
             json.dump(best_params, f, indent=2)
-                                                    
-                                                                     
+        # Also write trials as CSV for easy plotting
+        # Build stable header: union of all keys encountered (sorted)
         header_keys = set()
         for row in trial_rows:
             header_keys.update(row.keys())
@@ -247,7 +319,7 @@ def calibrate_random_search(
             w.writeheader()
             for row in trial_rows:
                 w.writerow(row)
-                                                                
+        # Write best-so-far progress CSV with additional metrics
         with open(os.path.join(out_dir, f"best_progress_{ts}.csv"), "w", newline="", encoding="utf-8") as f:
             w = csv.DictWriter(
                 f,
@@ -280,6 +352,13 @@ def calibrate_compare_interpolation(
     out_dir: str | None = None,
     observed_csv_path: str | None = None,
 ) -> Dict[str, Any]:
+    """Run calibration twice: once with interpolation ON and once OFF for observed deer.
+
+    This helps assess sensitivity to filling gaps in observed data. Results and trial logs are
+    saved under out_dir/interp_on and out_dir/interp_off when out_dir is provided.
+
+    Output: dict with keys {"interp_on": {"best_params", "best_score"}, "interp_off": {...}}
+    """
     results: Dict[str, Any] = {}
 
     subdir_on = os.path.join(out_dir, "interp_on") if out_dir else None
@@ -315,6 +394,7 @@ def calibrate_compare_interpolation(
 
 
 def main_bayes_opt() -> None:
+    """Command-line entry point for Bayesian optimization calibration."""
 
     from .bayes_optimize import calibrate_bayes_opt
 

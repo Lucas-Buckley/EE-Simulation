@@ -29,12 +29,20 @@ OUTPUT_FIELDS = [
 
 
 def run_years(config_path: str, out_csv_path: str) -> List[Dict[str, Any]]:
+    """Run the simulation across all years in the config and write a CSV of results.
+
+    Inputs:
+      - config_path: path to the config file with time range, parameters, inputs, and initial state
+      - out_csv_path: where to write the CSV containing one row per year
+    Output:
+      - list of per-year dictionaries (the same rows written to CSV)
+    """
     cfg = load_config(config_path)
     params_dict = asdict(cfg.params)
 
     rows: List[Dict[str, Any]] = []
 
-                   
+    # Initial state
     state = State(deer=cfg.init.deer, pred=cfg.init.pred, carry=cfg.init.carry)
     start = cfg.time.start
     end = cfg.time.end
@@ -63,10 +71,10 @@ def run_years(config_path: str, out_csv_path: str) -> List[Dict[str, Any]]:
         }
         rows.append(row)
 
-                       
+        # Advance state
         state = next_state
 
-               
+    # Write CSV
     os.makedirs(os.path.dirname(out_csv_path) or ".", exist_ok=True)
     with open(out_csv_path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=OUTPUT_FIELDS)
@@ -77,7 +85,7 @@ def run_years(config_path: str, out_csv_path: str) -> List[Dict[str, Any]]:
 
 
 if __name__ == "__main__":
-                                                                         
+    # Default: read configs/base.yaml and write experiments/run_years.csv
     base_cfg = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "configs", "base.yaml")
     out_csv = os.path.join(os.path.dirname(os.path.dirname(__file__)), "..", "experiments", "run_years.csv")
     base_cfg = os.path.abspath(base_cfg)

@@ -19,6 +19,7 @@ from .hybrid import calibrate_hybrid
 
 
 class MultiStrategyEvaluator:
+    """Run multiple optimisation strategies across multiple seeds and summarise results."""
 
     def __init__(
         self,
@@ -60,7 +61,7 @@ class MultiStrategyEvaluator:
         summaries["hybrid"] = self._run_hybrid()
         return self._compute_stats(summaries)
 
-                                                                            
+    # --- Strategy runners -------------------------------------------------
 
     def _run_random(self) -> List[Dict[str, Any]]:
         results: List[Dict[str, Any]] = []
@@ -134,7 +135,7 @@ class MultiStrategyEvaluator:
             )
         return results
 
-                                                                            
+    # --- Helpers ----------------------------------------------------------
 
     def _run_skopt_strategy(
         self,
